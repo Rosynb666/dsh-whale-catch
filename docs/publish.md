@@ -82,3 +82,26 @@ npm run verify
 - [ ] 勾两个文件打包，解压后路径与内容正确
 - [ ] 归档一次，确认落在 `$DSH_HOME/whale-catch/archive/<sessionId>/` 下
 - [ ] 卸载后右侧栏入口消失：`dsh plugin --profile desktop remove dsh-whale-catch`
+
+## 6. 隐私检查（发布前必做）
+
+预览图、示例数据、测试夹具最容易夹带真实工作区信息——文件名、目录结构、项目名。本项目就踩过一次：初版预览图里用的是真实课程作业文件名。
+
+发布前跑一遍文本扫描：
+
+```sh
+# 真实路径、个人目录、具体项目名都不该出现在仓库里
+git grep -nE "/Users/[a-z]+/(Desktop|Documents)|数据结构|蓝桥杯|能力自检|转换脚本|渲染证据" -- . ':!package-lock.json' || echo "✅ 文本干净"
+```
+
+图片没法 grep，打开 `docs/preview.png` 肉眼过一遍，确认文件名都是虚构的。本项目 `docs/preview.html` 的示例数据统一使用虚构名称：
+
+| 用途 | 示例文件名 |
+|---|---|
+| 文档 | `项目周报.docx`、`产品手册.pdf` |
+| 表格 | `预算表-2026.xlsx` |
+| 演示 | `评审材料.pptx` |
+| 代码 | `build.py` |
+| 压缩包 | `素材包.zip` |
+
+另外，只要旧版本曾经推到过公开仓库，**git 历史里仍然留着旧图**——force-push 只能断开引用，GitHub 仍会按旧 commit SHA 提供缓存。真要彻底清除，最稳的是删掉仓库重新建一个空仓库再推；只想清理 HEAD 的话，重写历史后记得让仓库主人手动删一次旧仓库。
