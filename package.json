@@ -1,0 +1,75 @@
+{
+  "name": "dsh-whale-catch",
+  "version": "0.1.0",
+  "description": "深海鱼篓：不用 agent 登记，自动收进本次会话产出的文件，右侧栏一键预览、打包 zip、归档。Zero-registration deliverable basket for DeepSeek Harness.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./icon": "./icon.svg",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "locale",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
+    "docs/preview.png",
+    "docs/architecture.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node scripts/contract-check.js",
+    "verify": "npm run check && npm test"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "deliverables",
+    "download",
+    "zip",
+    "sidebar",
+    "whale"
+  ],
+  "license": "MIT",
+  "author": "Rosynb666",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rosynb666/dsh-whale-catch.git"
+  },
+  "homepage": "https://github.com/Rosynb666/dsh-whale-catch#readme",
+  "bugs": {
+    "url": "https://github.com/Rosynb666/dsh-whale-catch/issues"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  }
+}

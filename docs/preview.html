@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>深海鱼篓 · 界面预览</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --dsw-alias-label-primary: #e8eaed;
+    --dsw-alias-label-secondary: #9aa0a6;
+    --dsw-alias-label-tertiary: #7c8288;
+    --dsw-alias-border-l4: rgba(255, 255, 255, 0.14);
+    --dsw-alias-border-l5: rgba(255, 255, 255, 0.07);
+    --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.045);
+    --dsw-alias-bg-module-platform: rgba(65, 118, 230, 0.16);
+    --dsw-static-deepseek-500: #4c8bf5;
+    --dsw-radius-sm: 8px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #202227;
+    font-family: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+    display: flex;
+    justify-content: flex-start;
+    align-items: stretch;
+  }
+  #frame {
+    width: 340px;
+    overflow: hidden;
+    background: #1b1d22;
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  #mount { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #mount > div { flex: 1; min-width: 0; min-height: 0; }
+</style>
+</head>
+<body>
+<div id="frame"><div id="mount"></div></div>
+<script>
+  /**
+   * 预览页：加载真实的 client bundle，注册一个假的 ctx 把 Panel 组件取出来，
+   * 再用示例数据渲染。这样图里的排版、文案、颜色都来自真代码，
+   * 只有数据源是假的（以及外面这圈深色边框是我加的栏框）。
+   */
+  window.__ModuleLoader__ = {
+    load(definition) { window.__whaleCatchDefinition = definition },
+  }
+</script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="../lib/client.js"></script>
+<script>
+  // 示例数据一律用虚构的项目与文件名：预览图会进公开仓库，
+  // 任何真实工作区路径、真实交付物名字都不该出现在这里。
+  const sample = {
+    session: 'preview',
+    cwd: '/Users/alex/projects/demo',
+    since: Date.now() - 3600_000,
+    archiveDir: '/Users/alex/.dsh/whale-catch/archive/preview',
+    scannedAt: Date.now() - 8000,
+    truncated: false,
+    totals: { count: 6, bytes: 6_913_779, missing: 0 },
+    files: [
+      {
+        path: '/Users/alex/projects/demo/项目周报.docx',
+        rel: '项目周报.docx',
+        name: '项目周报.docx',
+        kind: 'doc', ext: 'docx', size: 925_838,
+        mtimeMs: Date.now() - 180_000,
+        sources: ['presented', 'scanned'],
+        description: '第三季度周报（含图表）',
+        turn: 4, missing: false,
+      },
+      {
+        path: '/Users/alex/projects/demo/财务/预算表-2026.xlsx',
+        rel: '财务/预算表-2026.xlsx',
+        name: '预算表-2026.xlsx',
+        kind: 'sheet', ext: 'xlsx', size: 88_211,
+        mtimeMs: Date.now() - 720_000,
+        sources: ['scanned'], description: null, turn: null, missing: false,
+      },
+      {
+        path: '/Users/alex/projects/demo/产品手册.pdf',
+        rel: '产品手册.pdf',
+        name: '产品手册.pdf',
+        kind: 'doc', ext: 'pdf', size: 108_662,
+        mtimeMs: Date.now() - 800_000,
+        sources: ['presented'],
+        description: '产品手册定稿',
+        turn: 3, missing: false,
+      },
+      {
+        path: '/Users/alex/projects/demo/设计/评审材料.pptx',
+        rel: '设计/评审材料.pptx',
+        name: '评审材料.pptx',
+        kind: 'slide', ext: 'pptx', size: 34_677,
+        mtimeMs: Date.now() - 1_500_000,
+        sources: ['changed'], description: null, turn: 2, missing: false,
+      },
+      {
+        path: '/Users/alex/projects/demo/scripts/build.py',
+        rel: 'scripts/build.py',
+        name: 'build.py',
+        kind: 'code', ext: 'py', size: 3_043,
+        mtimeMs: Date.now() - 2_600_000,
+        sources: ['scanned'], description: null, turn: null, missing: false,
+      },
+      {
+        path: '/Users/alex/projects/demo/素材包.zip',
+        rel: '素材包.zip',
+        name: '素材包.zip',
+        kind: 'archive', ext: 'zip', size: 55_936,
+        mtimeMs: Date.now() - 3_100_000,
+        sources: ['scanned'], description: null, turn: null, missing: false,
+      },
+    ],
+  }
+
+  window.fetch = (url, init) => {
+    const body = { ok: true, value: sample }
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: { get: () => '' },
+      json: () => Promise.resolve(body),
+      blob: () => Promise.resolve(new Blob()),
+    })
+  }
+
+  let Panel = null
+  const dictionaries = {}
+  const React = window.React
+
+  const definition = window.__whaleCatchDefinition
+  const module = definition.factory((name) => {
+    if (name !== 'react') throw new Error('unexpected require: ' + name)
+    return React
+  })
+
+  const ctx = {
+    effect(factory) { factory(); return () => {} },
+    locale: {
+      register(namespace, dicts) { Object.assign(dictionaries, dicts); return () => {} },
+      bind() { return (key) => key },
+    },
+    sidebarRightTabs: { register() { return () => {} } },
+    slots: {
+      inject(name, factory) { return factory() },
+      register(def, component) { Panel = component; return () => {} },
+    },
+  }
+  module.apply(ctx)
+
+  const dict = dictionaries.zh
+  const t = (key, values) => {
+    const template = dict[key] !== undefined ? dict[key] : key
+    return String(template).replace(/\{(\w+)\}/g, (match, name) => (values && values[name] !== undefined ? String(values[name]) : match))
+  }
+
+  const root = ReactDOM.createRoot(document.getElementById('mount'))
+  root.render(React.createElement(Panel, { sessionId: 'preview', t }))
+</script>
+</body>
+</html>

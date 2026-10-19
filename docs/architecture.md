@@ -1,0 +1,91 @@
+# 架构与设计取舍
+
+这份文档记录**为什么这样写**，免得后来的人（包括三个月后的我）把它"优化"成另一个东西。
+
+## 不变量
+
+1. **零登记。** 任何"请 agent 调个工具登记文件"的设计都不做——历史插件证明它会吃灰。
+2. **不新增会话事件类型。** 只消费内核已持久化的 `deliverables/presented` 与 `workspace/changes`；插件新增 `type` 会让整个会话打不开（官方红线）。
+3. **路径白名单是唯一准入。** 所有读文件/打包/归档接口只接受"已经在鱼篓里"的路径，不做任何"传什么读什么"的便利。
+4. **无构建、无服务依赖。** `lib/client.js` 原样交给 `__ModuleLoader__`；唯一运行时依赖是 `@deepseek-ai/schemastery`（纯校验库，不注册服务）。它必须是 `dependencies`：profile 的 pnpm 配置是 `autoInstallPeers: false`，peer 在干净 profile 里不会安装，插件会在加载期直接失败（这条是实测踩出来的）。
+5. **服务全部可选，除了 `webServer`。** `agents`、`workspaceChanges` 走 `ctx.get()`，缺了降级而不是炸树。
+
+## 数据流
+
+```text
+                     ┌──────────────────────────── Host (lib/index.js) ───────────────────────────┐
+  session/event ────►│ observe()                                                                  │
+   ├ presented       │   ├ deliverables/presented ──► Basket.addPresented(files, turn)            │
+   ├ workspace/      │   ├ workspace/changes ──────► ctx.workspaceChanges.summary()                │
+   │   changes       │   │                            └─► Basket.addChanged(files, turn)          │
+   └ turn/end        │   └ turn/end ────────────────► scheduleScan()  (debounce 1.2s)            │
+                     │                                                                             │
+  GET /basket ──────►│ snapshot() ──► 必要时 scanWorkspace() ──► Basket.addScan()                  │
+                     │                        │                                                    │
+                     │                        └─ 合并三来源（键 = 绝对路径）──► files[] + totals      │
+                     │                                                                             │
+  POST /zip ────────►│ resolve(path) 白名单 ──► buildZip() ──► Buffer                            │
+  POST /archive ────►│ resolve(path) ──► copyFile 到 archiveDir/<sessionId>/…                     │
+  GET  /file ───────►│ resolve(path) ──► createReadStream                                         │
+                     └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## 为什么需要扫描兜底
+
+内核的两条来源都是"事件驱动"的：
+
+- `deliverables/presented` 只在模型调用 `present` 时产生。模型不会为每个文件都调用它。
+- `workspace/changes` 由 git 快照 + 文件工具（`write`/`edit`）的整文件捕获得出。
+
+于是最常见的一类产出——`bash` 里跑 `python build_doc.py`、`npm run build`、`pandoc`——**两边都不认**。鱼篓的第三条来源就是按 `mtime >= 会话创建时间` 扫一遍工作目录，把这类文件捞回来。
+
+代价是可能收录到"会话期间你手动改的无关文件"。这是有意的取舍：**宁可多收，不可漏收**，因为界面上有勾选与筛选，多一条的成本远低于"少一条导致你以为没生成出来"。
+
+## 采集时机与性能
+
+- `turn/end` 触发一次延迟 1.2s 的扫描（给写盘留时间），`unref()` 掉，不阻止进程退出。
+- `GET /basket` 也会按需扫描，但同一会话 1.5s 内只扫一次；并发请求共用同一个 Promise。
+- 扫描只走一遍目录，访问目录项有上限（默认 20000），命中 `maxFiles` 就停并标记 `truncated`。
+- 会话状态最多保留 40 个，超出按插入序淘汰（同时清掉定时器）。
+
+## 安全模型
+
+威胁不是"本机其他进程"（它们本来就能读文件），而是**浏览器里的第三方页面借用户身份打 loopback**：
+
+1. `Origin` 与 `Host` 不一致 → 403；`Sec-Fetch-Site: cross-site` → 403。
+2. 写操作必须 `application/json`：跨站表单发不出该 content-type；声明它会触发预检，而本路由只接受已声明的写方法与 JSON，预检直接 415。
+3. 路径白名单：`Basket.resolve()` 只认登记表里的绝对路径，`../` 与任意路径在入口就返回 404。
+4. zip 条目名过 `safeEntryName()`（去 `..`、去前导斜杠）；归档路径 `resolve` 后校验 `startsWith(root + sep)`。
+5. 上限：单文件 64 MB、打包总量 512 MB、条目数 800、请求体 1 MB。
+
+## 生命周期
+
+- 路由注册在 `ctx.effect()` 里，disposer 同时清空会话表与定时器；插件卸载/热替换后不残留。
+- 不修改 profile 的 `cordis.patch.yml`，配置走 profile 补丁层的 `id: dsh-whale-catch` 覆盖。
+- 客户端注册全部走 `ctx.effect()`：字典、tab 类型、pane 席位随插件 fiber 释放。
+
+## 为什么 schemastery 放在 dependencies 而不是 peer
+
+官方指南要求「共享实例的 dsh 包只放 peer」——那条约束针对的是**注册服务、共享单例**的 `@deepseek-ai/dsh-*` 包。schemastery 是纯 schema 校验库，每个插件拿自己的副本没有任何副作用；而 profile 的 `pnpm-workspace.yaml` 写着 `autoInstallPeers: false`，所以写成 peer 就等于「不装」，Host 半边会在 `import` 阶段就抛 `ERR_MODULE_NOT_FOUND`，表现为路由 404、侧栏空白。
+
+同类插件（如 dsh-whale-persona）也把它放在 `dependencies`，这是社区验证过的正确做法。契约自检脚本只允许这一个运行时依赖，出现别的会被拦下。
+
+## 为什么不用 storage 服务持久化
+
+鱼篓的内容可以从"会话事件 + 目录扫描"重建，没有不可推导的状态。重启后丢失的只有 `present` 的描述文本，而为一个描述文本引入 storage domain 的版本与迁移成本不划算。等"跨会话产物台账"真的要做时，再上 `ctx.storageDomain`。
+
+## 已知缺口
+
+- 跨会话视图（现在一个会话一个鱼篓）。
+- `present` 描述的持久化。
+- 更聪明的类型识别（现在按后缀；Office 文档内部类型没有嗅探）。
+- 归档目录的自动整理策略（按日期/按项目）。
+- 预览没有复用 DSH 的 Document Preview，Office 文档目前走浏览器下载。
+
+## 测试策略
+
+- **纯函数**（`scan` / `basket` / `zip` / `http`）单独测，不碰 Host。
+- **路由**用真实 `node:http` 服务 + `fetch` 打过去，测的是客户端实际会发的请求。
+- **client bundle** 用假 `window.__ModuleLoader__` + 假 React 装配一遍，断言注册了正确的 tab/slot/locale，并检查中英文字典键集一致。
+- **插件入口**用假 `ctx` 装配，模拟 `deliverables/presented` 事件后真的能从 HTTP 读到文件。
+- **zip** 用手写解析 + Python `zipfile` 交叉验证（macOS 自带 unzip 对 UTF-8 条目名的落盘行为不可靠，所以不用它验中文名）。

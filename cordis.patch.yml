@@ -1,0 +1,24 @@
+# dsh-whale-catch bundle layer (package.json#dsh.bundle.patch).
+#
+# 本插件只插入一行 loader entry：Host 半边由 package.json#main 提供，
+# 浏览器半边在 package.json#dsh.client 声明，由 client-modules 服务装载。
+#
+# 想改默认值就在下面展开 `config:` —— 但「改 profile 里的配置」有更稳的做法：
+# 在你自己的 profile 补丁层里用 `id: dsh-whale-catch` 覆盖 config，
+# 不要直接改本文件（升级会被覆盖，且 profile 级补丁才是用户层）。
+- insert:
+    - id: dsh-whale-catch
+      name: dsh-whale-catch
+      # config:
+      #   # 归档目录；缺省 $DSH_HOME/whale-catch/archive/<sessionId>
+      #   archiveDir: /Users/you/Documents/鱼篓归档
+      #   # 额外忽略的目录名（内置已忽略 node_modules / .git / 点开头目录等）
+      #   ignore:
+      #     - dist
+      #     - build
+      #   # 单个文件上限（字节），超过的文件只列出、不打包
+      #   maxFileBytes: 67108864
+      #   # 最多收录多少个文件
+      #   maxFiles: 800
+      #   # 目录遍历深度
+      #   maxDepth: 6

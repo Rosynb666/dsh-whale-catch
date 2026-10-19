@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+
+      # 不能直接用 `if: env.NODE_AUTH_TOKEN != ''` 判断：
+      # 没配置 secret 时该变量在表达式里是 null，而 `null != ''` 为真，
+      # 会导致拿空 token 去 publish 并失败（这个坑实测踩过）。
+      # 改成先由一个普通步骤算出布尔输出，再由它决定是否发布。
+      - name: 检查 npm 令牌
+        id: npm-token
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NODE_AUTH_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::未配置 NPM_TOKEN，跳过 npm 发布，只创建 GitHub Release"
+          fi
+
+      - name: 发布到 npm
+        if: steps.npm-token.outputs.configured == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
