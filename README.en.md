@@ -100,7 +100,7 @@ Override in your own profile patch layer — do **not** edit the bundled `cordis
 ```yaml
 - id: dsh-whale-catch
   config:
-    archiveDir: /Users/you/Documents/whale-catch
+    archiveDir: ~/Documents/whale-catch
     ignore: [dist, build, .venv]
     maxFiles: 800
     maxDepth: 6

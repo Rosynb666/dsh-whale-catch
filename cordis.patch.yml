@@ -11,7 +11,7 @@
       name: dsh-whale-catch
       # config:
       #   # 归档目录；缺省 $DSH_HOME/whale-catch/archive/<sessionId>
-      #   archiveDir: /Users/you/Documents/鱼篓归档
+      #   archiveDir: ~/Documents/鱼篓归档
       #   # 额外忽略的目录名（内置已忽略 node_modules / .git / 点开头目录等）
       #   ignore:
       #     - dist

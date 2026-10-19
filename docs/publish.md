@@ -27,7 +27,7 @@ npm run verify   # 改完再跑一次契约自检 + 测试
 cd dsh-whale-catch
 git init -b main
 git add -A
-git commit -m "feat: 深海鱼篓 v0.1.0 — 零登记的会话交付物收纳篮"
+git commit -m "feat: 深海鱼篓 v0.1.1 — 零登记的会话交付物收纳篮"
 
 # 换成你刚建的仓库地址
 git remote add origin https://github.com/Rosynb666/dsh-whale-catch.git
@@ -39,9 +39,11 @@ git push -u origin main
 ## 2. 打版本标签
 
 ```sh
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
+git tag -a v0.1.1 -m "v0.1.1"
+git push origin v0.1.1
 ```
+
+标签是发布契约：**已经推上去的标签不要改指向**。force-push 一个已发布的标签，会让 GitHub Release、缓存和其他人的 clone 对不上；有修复就发 `0.1.2` 这样的新版本。`0.1.1` 就是这么来的——`v0.1.0` 打完后才发现隐私清单该补，于是向前发版而不是挪标签。
 
 **Release** 工作流会被触发：跑一遍 `npm run verify`，然后在有 `NPM_TOKEN` 时发布到 npm，并创建 GitHub Release（自动生成变更说明）。
 
@@ -58,6 +60,12 @@ npm publish --access public
 
 ```sh
 npm pack --dry-run
+```
+
+本机 `npm pack` 若报 `EPERM`（受限环境常把 `~/.npm` 缓存挡在写权限之外），换一个可写缓存即可，不用 sudo：
+
+```sh
+npm pack --dry-run --cache="$(mktemp -d)"
 ```
 
 应该看到：`lib/`、`locale/`、`cordis.patch.yml`、`icon.svg`、`README*`、`CHANGELOG.md`、`docs/architecture.md`、`LICENSE`。
@@ -91,8 +99,13 @@ npm run verify
 
 ```sh
 # 真实路径、个人目录、具体项目名都不该出现在仓库里
-git grep -nE "/Users/[a-z]+/(Desktop|Documents)|数据结构|蓝桥杯|能力自检|转换脚本|渲染证据" -- . ':!package-lock.json' || echo "✅ 文本干净"
+git grep -nE "/Users/[a-z]+/(Desktop|Documents)|数据结构|蓝桥杯|能力自检|转换脚本|渲染证据" -- . ':!package-lock.json' ':!docs/publish.md' || echo "✅ 文本干净"
 ```
+
+两个细节，都是被误报逼出来的：
+
+- 示例路径统一用 `~` 开头（`~/Documents/...`）。写成 `/Users/you/...` 会被上面这条规则当成真实个人目录，扫一次报一次。
+- `docs/publish.md` 自己带着 `数据结构`、`蓝桥杯` 这些关键词，必然命中，所以要用 `':!docs/publish.md'` 把自己排除。
 
 图片没法 grep，打开 `docs/preview.png` 肉眼过一遍，确认文件名都是虚构的。本项目 `docs/preview.html` 的示例数据统一使用虚构名称：
 

@@ -112,7 +112,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 # ~/.dsh/profiles/desktop/cordis.patch.yml
 - id: dsh-whale-catch
   config:
-    archiveDir: /Users/you/Documents/鱼篓归档   # 缺省 $DSH_HOME/whale-catch/archive
+    archiveDir: ~/Documents/鱼篓归档          # 缺省 $DSH_HOME/whale-catch/archive
     ignore: [dist, build, .venv]               # 额外忽略的目录名
     maxFiles: 800                              # 最多收录多少个文件
     maxDepth: 6                                # 目录遍历深度
