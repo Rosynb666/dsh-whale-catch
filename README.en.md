@@ -100,7 +100,7 @@ Override in your own profile patch layer — do **not** edit the bundled `cordis
 ```yaml
 - id: dsh-whale-catch
   config:
-    archiveDir: ~/Documents/whale-catch
+    archiveDir: ~/Documents/whale-catch   # ~ expands; default: $DSH_HOME/whale-catch/archive
     ignore: [dist, build, .venv]
     maxFiles: 800
     maxDepth: 6
@@ -132,7 +132,7 @@ These routes live on the loopback Host, so the threat model is *a third-party pa
 
 ```sh
 npm install
-npm test        # 34 tests: scan / merge / zip format / HTTP fence / client registration / plugin load
+npm test        # 35 tests: scan / merge / zip format / HTTP fence / client registration / plugin load
 npm run check   # contract self-check (package shape, patch, client.inject, meta, icon, deps)
 npm run verify  # both
 ```

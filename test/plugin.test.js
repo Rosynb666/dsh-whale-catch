@@ -44,6 +44,16 @@ test('normalizeConfig 把越界与脏值夹回安全区间', () => {
   assert.equal(normalized.lookbackMinutes, 720)
 })
 
+test('archiveDir 开头的 ~ 会展开到用户主目录', () => {
+  assert.equal(normalizeConfig({ archiveDir: '~' }).archiveDir, os.homedir())
+  assert.equal(
+    normalizeConfig({ archiveDir: '  ~/Documents/鱼篓归档  ' }).archiveDir,
+    path.join(os.homedir(), 'Documents', '鱼篓归档'),
+  )
+  // 只有开头才展开，别把普通目录名里的 ~ 也改坏
+  assert.equal(normalizeConfig({ archiveDir: '/tmp/~/鱼篓' }).archiveDir, path.resolve('/tmp/~/鱼篓'))
+})
+
 test('apply 注册前缀路由与会话事件监听；present 的文件真的会出现在鱼篓里', async (t) => {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-plugin-'))
   t.after(async () => fs.rm(cwd, { recursive: true, force: true }))

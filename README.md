@@ -112,7 +112,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 # ~/.dsh/profiles/desktop/cordis.patch.yml
 - id: dsh-whale-catch
   config:
-    archiveDir: ~/Documents/鱼篓归档          # 缺省 $DSH_HOME/whale-catch/archive
+    archiveDir: ~/Documents/鱼篓归档          # 缺省 $DSH_HOME/whale-catch/archive；~ 会展开
     ignore: [dist, build, .venv]               # 额外忽略的目录名
     maxFiles: 800                              # 最多收录多少个文件
     maxDepth: 6                                # 目录遍历深度
@@ -144,7 +144,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 
 ```sh
 npm install
-npm test        # 34 项：扫描 / 合并 / zip 格式 / HTTP 栅栏 / client 注册 / 插件装载
+npm test        # 35 项：扫描 / 合并 / zip 格式 / HTTP 栅栏 / client 注册 / 插件装载
 npm run check   # 契约自检（包结构、patch、client.inject、meta、icon、依赖纪律…）
 npm run verify  # 两个都跑
 ```
