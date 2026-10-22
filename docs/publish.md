@@ -45,11 +45,40 @@ git push origin v0.1.1
 
 标签是发布契约：**已经推上去的标签不要改指向**。force-push 一个已发布的标签，会让 GitHub Release、缓存和其他人的 clone 对不上；有修复就发 `0.1.2` 这样的新版本。`0.1.1` 就是这么来的——`v0.1.0` 打完后才发现隐私清单该补，于是向前发版而不是挪标签。
 
-**Release** 工作流会被触发：跑一遍 `npm run verify`，然后在有 `NPM_TOKEN` 时发布到 npm，并创建 GitHub Release（自动生成变更说明）。
+**Release** 工作流会被触发，按顺序尝试两条发布路径：
 
-在仓库 `Settings → Secrets and variables → Actions` 里加 `NPM_TOKEN`（npm 账号的 Automation token）才会真的发 npm；不加就只出 GitHub Release。
+1. **Trusted Publishing（OIDC）**——不需要任何 secret。先在 npm 包设置里把 GitHub 仓库绑上（见下一节），CI 用 `id-token` 换发布凭证，provenance 由 OIDC 签发。
+2. **回落 `NPM_TOKEN`**——OIDC 没配好、或绑定信息对不上时才会用到。两条都不可用时工作流直接失败并报错，不再「静默跳过、只出 Release」（0.1.3 之前就是那样，很容易误以为发上去了）。
 
-## 3. 发布到 npm（可选但推荐）
+标签推上去之后也可以手动补发：**Actions → Release → Run workflow**，填要发布的 tag。适合「标签已经推了，但 npm 那步没成功」的场景，不用为补发再打一个空版本。
+
+## 3. 发布到 npm
+
+### 3.1 首选：Trusted Publishing（OIDC，无 secret）
+
+npmjs.com → 你的包 → **Settings** → **Trusted Publishing** → Add a trusted publisher：
+
+| 字段 | 值 |
+|---|---|
+| Provider | GitHub Actions |
+| Organization or user | `Rosynb666` |
+| Repository | `dsh-whale-catch` |
+| Workflow filename | `release.yml` |
+| Environment | 留空 |
+
+配好之后 `release.yml` 的 OIDC 步骤就能直接发布，仓库里不用存 token。workflow 里已经写了 `permissions.id-token: write`，这是换取 OIDC 令牌的前提。
+
+> npm 从 2027 年 1 月起收紧「绕过 2FA 的 token 直接发布」，OIDC 是官方方向。token 回落只是过渡期保险。
+
+### 3.2 过渡：仓库 secret `NPM_TOKEN`
+
+在 `Settings → Secrets and variables → Actions` → **Repository secrets**（不是 Environment secrets）加 `NPM_TOKEN`：
+
+- Classic token 选 **Automation**，或 Granular token 勾 **Read and write** + 选中 `dsh-whale-catch`；
+- **Bypass two-factor authentication (2FA)** 要勾——CI 里没人能输 OTP；
+- 设一个过期时间，到期前换新的，别用永不过期的 token。
+
+### 3.3 手动发（应急）
 
 ```sh
 npm login
@@ -84,6 +113,7 @@ npm run verify
 
 - [ ] `npm run check` 全绿（包结构 / patch / client.inject / meta / icon / 依赖纪律）
 - [ ] `npm test` 全绿（40 项）
+- [ ] npm 发布路径可用：npm 包里已绑定 Trusted Publishing，或仓库里有有效的 `NPM_TOKEN` 回落
 - [ ] `npm pack --dry-run` 的文件清单符合预期
 - [ ] 在干净的 profile 里装一次：`dsh plugin --profile desktop add <tarball 或仓库地址>`
 - [ ] 刷新页面，右侧栏 `+` 能看到「打开深海鱼篓」，点开能列出文件

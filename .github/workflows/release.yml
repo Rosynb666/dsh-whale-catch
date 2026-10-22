@@ -4,47 +4,64 @@ on:
   push:
     tags:
       - 'v*'
+  # 手动补发：Actions → Release → Run workflow → 填 tag（例如 v0.1.3）。
+  # 标签已经推了但发布没成功时，不用再打一个空版本。
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要发布的 tag（例如 v0.1.3）'
+        required: true
+        type: string
 
 permissions:
   contents: write
+  # Trusted Publishing 靠这个权限换 OIDC 令牌，不要删。
   id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
           cache: npm
+
       - run: npm ci
       - run: npm run verify
 
-      # 不能直接用 `if: env.NODE_AUTH_TOKEN != ''` 判断：
-      # 没配置 secret 时该变量在表达式里是 null，而 `null != ''` 为真，
-      # 会导致拿空 token 去 publish 并失败（这个坑实测踩过）。
-      # 改成先由一个普通步骤算出布尔输出，再由它决定是否发布。
-      - name: 检查 npm 令牌
-        id: npm-token
+      # Trusted Publishing 需要 npm >= 11.5.2；runner 自带的版本偏旧。
+      - name: 升级 npm（OIDC 需要 11.5.2+）
+        run: npm install -g 'npm@^11.5.2'
+
+      # 优先走 Trusted Publishing：不读任何 secret，provenance 由 OIDC 签发。
+      # 没在 npm 包设置里绑 GitHub 仓库时会失败，所以下一步留了 token 回落。
+      - name: 发布到 npm（Trusted Publishing / OIDC）
+        id: npm-oidc
+        continue-on-error: true
+        run: npm publish --provenance --access public
+
+      - name: 回落：用 NPM_TOKEN 发布
+        if: steps.npm-oidc.outcome == 'failure'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -n "$NODE_AUTH_TOKEN" ]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::未配置 NPM_TOKEN，跳过 npm 发布，只创建 GitHub Release"
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::Trusted Publishing 未配置，仓库也没有 NPM_TOKEN 可回落，npm 发布未完成"
+            exit 1
           fi
-
-      - name: 发布到 npm
-        if: steps.npm-token.outputs.configured == 'true'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --provenance --access public
+          echo "::warning::OIDC 发布失败，回落到 NPM_TOKEN（建议尽快在 npm 包设置里绑定 Trusted Publishing）"
+          # setup-node 没配 registry-url，.npmrc 得自己写；否则 npm 读不到这个 token。
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > "$HOME/.npmrc"
+          npm publish --provenance --access public
 
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           generate_release_notes: true
