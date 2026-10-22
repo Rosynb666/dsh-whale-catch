@@ -130,6 +130,7 @@ test('没有活跃 agent 且没给 cwd 时，basket 返回可读错误而不是�
   const response = await fetch(`http://127.0.0.1:${address.port}/whale-catch/api/basket?session=ghost`)
   const payload = await response.json()
   assert.equal(payload.ok, false)
-  assert.equal(response.status, 500)
+  assert.equal(response.status, 409, '拿不到 cwd 是可重试状态，不该报 500')
+  assert.equal(payload.error.code, 'no-cwd')
   assert.match(payload.error.message, /工作目录/)
 })

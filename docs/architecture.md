@@ -55,8 +55,9 @@
 1. `Origin` 与 `Host` 不一致 → 403；`Sec-Fetch-Site: cross-site` → 403。
 2. 写操作必须 `application/json`：跨站表单发不出该 content-type；声明它会触发预检，而本路由只接受已声明的写方法与 JSON，预检直接 415。
 3. 路径白名单：`Basket.resolve()` 只认登记表里的绝对路径，`../` 与任意路径在入口就返回 404。
-4. zip 条目名过 `safeEntryName()`（去 `..`、去前导斜杠）；归档路径 `resolve` 后校验 `startsWith(root + sep)`。
-5. 上限：单文件 64 MB、打包总量 512 MB、条目数 800、请求体 1 MB。
+4. zip 条目名过 `safeEntryName()`（去 `..`、去前导斜杠）；归档路径 `resolve` 后校验 `startsWith(root + sep)`，cwd 外的文件统一落在 `_external/<文件名>`，不做绝对路径镜像。
+5. 内联预览的脚本隔离：`text/html`、`image/svg+xml` 这类会执行脚本的文档，`/file` 响应带 `Content-Security-Policy: sandbox`——文档照常渲染，但脚本不执行、源变 opaque，无法反手请求本机接口（0.1.2 及以前是裸奔的）。
+6. 上限：单文件 64 MB、打包总量 512 MB、条目数 800、请求体 1 MB。超限文件被跳过时用 `X-Whale-Catch-Skipped` 回传数量，界面不会「静默少文件」。
 
 ## 生命周期
 

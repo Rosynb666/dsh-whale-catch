@@ -43,10 +43,10 @@ It does not reinvent the wheel: both `deliverables/presented` and `workspace/cha
 Requires DSH `>= 0.2.0-rc.2` and Node `^22.19 || >=24` (the Desktop runtime already satisfies both).
 
 ```sh
-# from GitHub (once the repo is published)
+# from GitHub
 dsh plugin --profile desktop add github:Rosynb666/dsh-whale-catch
 
-# from npm (once published)
+# from npm
 dsh plugin --profile desktop add dsh-whale-catch
 
 # local development
@@ -77,7 +77,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 ```
 
 - **Select** → zip only the selected files; nothing selected means “zip everything”.
-- **Archive** → copies into the archive directory, preserving relative paths, never overwriting (adds ` (2)`).
+- **Archive** → copies into the archive directory, preserving relative paths, never overwriting (adds ` (2)`); files outside the cwd go to `_external/`.
 - **Open** → opens the original file in a new tab (images / PDF / text inline, Office downloads).
 - **⧉** → copy the absolute path.
 
@@ -117,8 +117,9 @@ These routes live on the loopback Host, so the threat model is *a third-party pa
 - **Path allowlist** — `/file`, `/zip`, `/archive` only accept paths already in the basket; there is no arbitrary file read, and `../` is rejected at the allowlist.
 - **Same-origin fence** — a mismatched `Origin` or `Sec-Fetch-Site: cross-site` gets 403.
 - **Writes must be `application/json`** — cross-site forms cannot send it, and declaring it triggers a preflight that this route rejects with 415.
-- **Zip / archive hardening** — entry names drop `..` and leading slashes; archive writes verify the target stays under the archive root.
-- **Hard caps** — 64 MB per file, 512 MB per zip, 800 files, 1 MB request body.
+- **Sandboxed inline preview** — HTML / SVG would inherit the Host origin, so those responses carry `Content-Security-Policy: sandbox`: they still render, but scripts do not run and the origin is opaque, so a previewed file cannot call the local API.
+- **Zip / archive hardening** — entry names drop `..` and leading slashes; archive writes verify the target stays under the archive root; files outside the cwd go to `_external/` instead of mirroring absolute paths.
+- **Hard caps** — 64 MB per file, 512 MB per zip, 800 files, 1 MB request body. Oversized files are skipped and reported to the panel via `X-Whale-Catch-Skipped`.
 
 ## Known limitations
 
@@ -126,13 +127,13 @@ These routes live on the loopback Host, so the threat model is *a third-party pa
 - After a Host restart, `present` descriptions and turn numbers are gone; files reappear via mtime.
 - Files whose mtime predates the session are skipped.
 - The archive directory lives under `$DSH_HOME`; it does not sync to a cloud drive.
-- Preview relies on the browser: PDF / images / text inline, docx / xlsx download.
+- Preview relies on the browser: PDF / images / text inline, HTML / SVG render in a sandbox (styles kept, scripts blocked), docx / xlsx download.
 
 ## Development
 
 ```sh
 npm install
-npm test        # 35 tests: scan / merge / zip format / HTTP fence / client registration / plugin load
+npm test        # 40 tests: scan / merge / zip format / HTTP fence / client registration / plugin load
 npm run check   # contract self-check (package shape, patch, client.inject, meta, icon, deps)
 npm run verify  # both
 ```

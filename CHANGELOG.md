@@ -2,6 +2,23 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.1.3] - 2026-10-22
+
+### 安全
+
+- `/file` 对 HTML / SVG 内联预览加 `Content-Security-Policy: sandbox`。此前工作区里任意 `.html` / `.svg` 被点开预览时，能在 Host 源上执行脚本，进而调用本插件接口把其它文件打包外带——现在这类文档照常渲染，但脚本被禁用、源被置为 opaque。
+
+### 修复
+
+- 拿不到会话工作目录时，从 `500 internal` 改为 `409 no-cwd`；客户端按错误码取本地化文案，英文界面不再突然冒出一段中文。
+- 打包 zip 不再静默丢弃超过单文件上限的文件：响应头 `X-Whale-Catch-Skipped` 回传跳过数量，面板提示「已跳过 N 个」；选中的文件全部超限时返回 `413 all-too-large`。
+- cwd 之外的 `present` 文件归档到 `<归档根>/<sessionId>/_external/`，不再把绝对路径镜像成 `Users/…`（Windows 上原本还会造出盘符目录）。
+
+### 其他
+
+- `@deepseek-ai/schemastery` 只声明在 `dependencies`：原来同时写进 `devDependencies`，会让 lockfile 把它标成 dev 依赖，与「它必须是运行时依赖」的注释自相矛盾。
+- 测试 35 → 40 项，覆盖 CSP 沙箱、`no-cwd` 状态码、超大文件跳过、外置路径归档。
+
 ## [0.1.2] - 2026-10-19
 
 ### 修复

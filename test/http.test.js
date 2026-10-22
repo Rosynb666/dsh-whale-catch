@@ -7,6 +7,7 @@ import {
   hasJsonContentType,
   isInlineType,
   isSameOrigin,
+  needsSandbox,
   readJsonBody,
 } from '../lib/http.js'
 
@@ -31,6 +32,18 @@ test('contentTypeFor 与 isInlineType：pdf/图片/文本内联，docx 走附件
   assert.equal(isInlineType(contentTypeFor('a.pdf')), true)
   assert.equal(isInlineType(contentTypeFor('a.docx')), false)
   assert.equal(contentTypeFor('no-extension'), 'application/octet-stream')
+})
+
+test('needsSandbox：只有能执行脚本的文档类型才加 CSP 沙箱', () => {
+  // 这三类内联出去会拿到 Host 源，必须沙箱
+  assert.equal(needsSandbox(contentTypeFor('报告.html')), true)
+  assert.equal(needsSandbox(contentTypeFor('示意图.svg')), true)
+  assert.equal(needsSandbox('application/xhtml+xml'), true)
+  // 普通文本、图片、PDF 不背这个锅
+  assert.equal(needsSandbox(contentTypeFor('说明.txt')), false)
+  assert.equal(needsSandbox(contentTypeFor('截图.png')), false)
+  assert.equal(needsSandbox(contentTypeFor('手册.pdf')), false)
+  assert.equal(needsSandbox(contentTypeFor('报告.docx')), false)
 })
 
 test('contentDisposition：ASCII 回退 + RFC 5987 编码', () => {

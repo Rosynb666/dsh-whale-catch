@@ -83,7 +83,7 @@ npm run verify
 ```
 
 - [ ] `npm run check` 全绿（包结构 / patch / client.inject / meta / icon / 依赖纪律）
-- [ ] `npm test` 全绿（35 项）
+- [ ] `npm test` 全绿（40 项）
 - [ ] `npm pack --dry-run` 的文件清单符合预期
 - [ ] 在干净的 profile 里装一次：`dsh plugin --profile desktop add <tarball 或仓库地址>`
 - [ ] 刷新页面，右侧栏 `+` 能看到「打开深海鱼篓」，点开能列出文件

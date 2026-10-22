@@ -47,10 +47,10 @@
 要求：DSH `>= 0.2.0-rc.2`，Node `^22.19 || >=24`（Desktop 自带运行时已满足）。
 
 ```sh
-# 从 GitHub 安装（仓库发布后）
+# 从 GitHub 安装
 dsh plugin --profile desktop add github:Rosynb666/dsh-whale-catch
 
-# 从 npm 安装（发布后）
+# 从 npm 安装
 dsh plugin --profile desktop add dsh-whale-catch
 
 # 本地开发：直接用目录
@@ -88,7 +88,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 ```
 
 - **勾选** → 只打包选中的；一个都不选就是「全部打包」
-- **归档** → 复制到归档目录，保留相对路径，同名文件自动加 `(2)` 不覆盖
+- **归档** → 复制到归档目录，保留相对路径，同名文件自动加 `(2)` 不覆盖；cwd 外的文件统一收进 `_external/`
 - **预览** → 新标签页打开原文件：图片 / PDF / 文本直接看，Office 走下载
 - **⧉** → 复制绝对路径（贴给别的工具最省事）
 
@@ -129,8 +129,9 @@ dsh plugin --profile desktop remove dsh-whale-catch
 - **路径白名单**：`/file`、`/zip`、`/archive` 只接受**已经进筐**的路径（Host 内存里的登记表），没有任意文件读取面；`../` 穿越在登记表这一层就被挡掉。
 - **同源栅栏**：带 `Origin` 且 Host 对不上的请求一律 403；`Sec-Fetch-Site: cross-site` 同样拒绝。
 - **写操作必须 `application/json`**：跨站表单发不出这个 content-type，声明了它会触发预检，而预检打到本路由直接被 415 挡掉。
-- **打包与归档的额外校验**：zip 条目名去掉上跳段与前导斜杠；归档写入前再确认目标落在归档根目录内。
-- **硬上限**：单文件 64 MB、打包总量 512 MB、最多 800 个文件、请求体 1 MB，全部可配。
+- **内联预览加沙箱**：HTML / SVG 内联出去会继承 Host 源，所以这两类响应带 `Content-Security-Policy: sandbox`——文档照常渲染，脚本不执行、源变 opaque，没法反过来调本机接口。
+- **打包与归档的额外校验**：zip 条目名去掉上跳段与前导斜杠；归档写入前再确认目标落在归档根目录内；cwd 之外的文件收进 `_external/`，不镜像绝对路径。
+- **硬上限**：单文件 64 MB、打包总量 512 MB、最多 800 个文件、请求体 1 MB，全部可配。超限文件会被跳过，并通过 `X-Whale-Catch-Skipped` 告诉面板跳了几条。
 
 ## 已知限制
 
@@ -138,13 +139,13 @@ dsh plugin --profile desktop remove dsh-whale-catch
 - Host 重启后，`present` 的描述与轮次号不会恢复；文件本身会靠 mtime 重新出现。
 - mtime 早于会话创建时间的文件不会进筐——"从别处复制进来但保留了旧时间戳"就属于这种。
 - 归档目录默认在 `$DSH_HOME` 下，不会自动同步到网盘。
-- 预览走浏览器原生能力：PDF / 图片 / 文本能直接看，docx / xlsx 会触发下载（DSH 自带的文档预览更合适，欢迎 PR）。
+- 预览走浏览器原生能力：PDF / 图片 / 文本能直接看，HTML / SVG 在沙箱里渲染（样式还在，脚本不执行），docx / xlsx 会触发下载（DSH 自带的文档预览更合适，欢迎 PR）。
 
 ## 开发
 
 ```sh
 npm install
-npm test        # 35 项：扫描 / 合并 / zip 格式 / HTTP 栅栏 / client 注册 / 插件装载
+npm test        # 40 项：扫描 / 合并 / zip 格式 / HTTP 栅栏 / client 注册 / 插件装载
 npm run check   # 契约自检（包结构、patch、client.inject、meta、icon、依赖纪律…）
 npm run verify  # 两个都跑
 ```
