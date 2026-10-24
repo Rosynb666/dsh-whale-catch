@@ -4,7 +4,7 @@ import http from 'node:http'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { API_PREFIX, createApi } from '../lib/routes.js'
+import { API_PREFIX, createApi, trimDiff } from '../lib/routes.js'
 import { toPosix } from '../lib/kinds.js'
 
 /**
@@ -12,8 +12,11 @@ import { toPosix } from '../lib/kinds.js'
  * 这样测的是"客户端真的会发的那种请求"，而不是直接调内部函数。
  * @param {object} store
  */
-async function serve(store) {
-  const handler = createApi({ store, config: { maxFileBytes: 1024 * 1024, maxZipBytes: 4 * 1024 * 1024 } })
+async function serve(store, overrides) {
+  const handler = createApi({
+    store,
+    config: Object.assign({ maxFileBytes: 1024 * 1024, maxZipBytes: 4 * 1024 * 1024 }, overrides),
+  })
   const server = http.createServer((req, res) => { handler(req, res) })
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const address = /** @type {{port: number}} */ (server.address())
@@ -286,4 +289,103 @@ test('cwd 外的文件归档进 _external/，不再镜像绝对路径', async (t
   // 绝对路径没有被拆成 Users/… 镜像进归档目录
   const mirrored = path.join(dir, '_archive', 'session-test', ...toPosix(outside).split('/').slice(1, 2))
   assert.equal(await fs.access(mirrored).then(() => true, () => false), false)
+})
+
+test('diff 把内核对比返回给面板，超出预算的部分被裁掉', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const store = await makeStore(dir, [{ rel: 'app.js', content: 'const a = 1\n' }])
+  const lines = []
+  for (let i = 0; i < 1500; i += 1) lines.push('+line ' + i)
+  let seen = null
+  store.diff = async (sessionId, requested, signal) => {
+    seen = { sessionId, requested, abortable: typeof signal?.aborted === 'boolean' }
+    return {
+      kind: 'text',
+      path: path.join(dir, 'app.js'),
+      display: 'app.js',
+      before: true,
+      after: true,
+      coarse: false,
+      hunks: [{ oldStart: 1, oldLines: 0, newStart: 1, newLines: 1500, lines }],
+    }
+  }
+  const server = await serve(store)
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  const response = await fetch(`${server.base}diff?session=session-test&path=app.js`)
+  assert.equal(response.status, 200)
+  const payload = await response.json()
+  assert.equal(payload.ok, true)
+  assert.equal(payload.value.trimmed, true)
+  assert.equal(payload.value.hunks.length, 1)
+  assert.equal(payload.value.hunks[0].lines.length, 1200)
+  assert.equal(payload.value.hunks[0].newLines, 1200, '裁剪后 @@ 头的行数要和实际行数一致')
+  assert.equal(payload.value.hunks[0].oldLines, 0)
+  assert.deepEqual(seen, { sessionId: 'session-test', requested: 'app.js', abortable: true })
+})
+
+test('store 没有 diff 能力时返回 404 no-diff，不是 500', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const server = await serve(await makeStore(dir))
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  const response = await fetch(`${server.base}diff?session=session-test&path=${encodeURIComponent('报告.docx')}`)
+  assert.equal(response.status, 404)
+  const payload = await response.json()
+  assert.equal(payload.ok, false)
+  assert.equal(payload.error.code, 'no-diff')
+})
+
+test('diff 超时返回 504 diff-timeout，并真的把 AbortSignal 传下去', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const store = await makeStore(dir)
+  let aborted = false
+  store.diff = (sessionId, requested, signal) =>
+    new Promise((resolve, reject) => {
+      signal.addEventListener('abort', () => {
+        aborted = true
+        reject(new Error('aborted'))
+      })
+    })
+  const server = await serve(store, { diffTimeoutMs: 30 })
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  const response = await fetch(`${server.base}diff?session=session-test&path=${encodeURIComponent('报告.docx')}`)
+  assert.equal(response.status, 504)
+  const payload = await response.json()
+  assert.equal(payload.error.code, 'diff-timeout')
+  assert.equal(aborted, true, '超时必须中止内核的读盘，而不是丢着跑')
+})
+
+test('trimDiff 只裁 text，并按行首重算 hunk 的行数', () => {
+  const diff = {
+    kind: 'text',
+    hunks: [{ oldStart: 1, oldLines: 3, newStart: 1, newLines: 4, lines: [' ctx', '-old', '+new', '+more'] }],
+  }
+  const cut = trimDiff(diff, 3)
+  assert.equal(cut.trimmed, true)
+  assert.equal(cut.hunks[0].lines.length, 3)
+  assert.equal(cut.hunks[0].oldLines, 2, '上下文 + 删除行算旧侧')
+  assert.equal(cut.hunks[0].newLines, 2, '上下文 + 新增行算新侧')
+
+  const whole = trimDiff({ kind: 'text', hunks: diff.hunks }, 100)
+  assert.equal(whole.trimmed, false)
+  assert.equal(whole.hunks[0].lines.length, 4)
+  assert.equal(whole.hunks[0].oldLines, 3, '没裁剪时不改动内核给的行数')
+
+  const binary = { kind: 'binary', path: 'a.png' }
+  assert.equal(trimDiff(binary, 1), binary, 'binary / oversized 原样返回')
+
+  const empty = trimDiff({ kind: 'text', hunks: [] }, 10)
+  assert.deepEqual(empty.hunks, [])
+  assert.equal(empty.trimmed, false)
 })

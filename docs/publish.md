@@ -112,12 +112,13 @@ npm run verify
 ```
 
 - [ ] `npm run check` 全绿（包结构 / patch / client.inject / meta / icon / 依赖纪律）
-- [ ] `npm test` 全绿（40 项）
+- [ ] `npm test` 全绿（49 项）
 - [ ] npm 发布路径可用：npm 包里已绑定 Trusted Publishing，或仓库里有有效的 `NPM_TOKEN` 回落
 - [ ] `npm pack --dry-run` 的文件清单符合预期
 - [ ] 在干净的 profile 里装一次：`dsh plugin --profile desktop add <tarball 或仓库地址>`
 - [ ] 刷新页面，右侧栏 `+` 能看到「打开深海鱼篓」，点开能列出文件
 - [ ] 勾两个文件打包，解压后路径与内容正确
+- [ ] 点开一条改动文件的「差异」能看到 hunk（`+` / `−` 着色）；扫描进来的文件没有「差异」按钮
 - [ ] 归档一次，确认落在 `$DSH_HOME/whale-catch/archive/<sessionId>/` 下
 - [ ] 卸载后右侧栏入口消失：`dsh plugin --profile desktop remove dsh-whale-catch`
 

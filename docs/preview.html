@@ -108,7 +108,7 @@
         name: 'build.py',
         kind: 'code', ext: 'py', size: 3_043,
         mtimeMs: Date.now() - 2_600_000,
-        sources: ['scanned'], description: null, turn: null, missing: false,
+        sources: ['changed', 'scanned'], description: null, turn: 3, missing: false,
       },
       {
         path: '/Users/alex/projects/demo/素材包.zip',
@@ -121,7 +121,47 @@
     ],
   }
 
+  // 0.2.0 的预览要展示行数徽章与「差异」入口：补上内核 workspace/changes 会给的字段。
+  // 只有 changed 来源才有行数；presented / scanned 的 added 是 null（不是 0）。
+  sample.totals = Object.assign({}, sample.totals, { changed: 2, added: 60, deleted: 11 })
+  sample.files.forEach((file) => {
+    const changed = file.sources.includes('changed')
+    file.added = changed ? (file.name === 'build.py' ? 18 : 42) : null
+    file.deleted = changed ? (file.name === 'build.py' ? 4 : 7) : null
+    file.binary = false
+    file.oversized = false
+    file.diffable = changed
+  })
+
   window.fetch = (url, init) => {
+    const target = String(url)
+    if (target.includes('/diff')) {
+      // 预览默认不展开差异，但把接口备好，点开也不会露馅
+      const diff = {
+        kind: 'text',
+        path: '/Users/alex/projects/demo/设计/评审材料.pptx',
+        display: '设计/评审材料.pptx',
+        before: true,
+        after: true,
+        coarse: false,
+        hunks: [
+          {
+            oldStart: 12,
+            oldLines: 3,
+            newStart: 12,
+            newLines: 4,
+            lines: [' 幻灯片 3：预算', '-旧标题：第三季度', '+新标题：第三季度（定稿）', '+备注：预算已复核'],
+          },
+        ],
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => '' },
+        json: () => Promise.resolve({ ok: true, value: diff }),
+        blob: () => Promise.resolve(new Blob()),
+      })
+    }
     const body = { ok: true, value: sample }
     return Promise.resolve({
       ok: true,
@@ -164,6 +204,13 @@
 
   const root = ReactDOM.createRoot(document.getElementById('mount'))
   root.render(React.createElement(Panel, { sessionId: 'preview', t }))
+
+  // 预览图想把「差异」也拍进去：挂载后自动点开第一条改动文件（仅预览页的行为）
+  setTimeout(() => {
+    const target = Array.from(document.querySelectorAll('button'))
+      .find((button) => button.textContent === '差异')
+    if (target) target.click()
+  }, 500)
 </script>
 </body>
 </html>

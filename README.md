@@ -4,7 +4,7 @@
 
 [English](README.en.md) | 中文
 
-给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的右侧栏插件：把一场会话里**产出或改动的文件**汇总到一个篮子里，预览、打包 zip、一键归档。
+给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的右侧栏插件：把一场会话里**产出或改动的文件**汇总到一个篮子里，预览、看差异、打包 zip、一键归档。
 
 [![CI](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml/badge.svg)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml)
 [![Release](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml/badge.svg)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml)
@@ -28,7 +28,7 @@
 - 我在 `bash` 里跑 `python build_doc.py` 写出来的 docx / pdf，既不算"文件工具改动"，也没调 `present`，两套机制都不认；
 - 攒了十几个交付物想一次发给别人，只能回目录里翻，还要担心漏掉。
 
-鱼篓只做三件事：**自动收**、**一处看**、**一键打包/归档**。
+鱼篓只做三件事：**自动收**、**一处看**、**一键打包/归档**；改过的文件还能就地展开差异，不用回 git 里翻。
 
 ## 和内核产出物的区别
 
@@ -38,7 +38,8 @@
 |---|---|---|
 | 来源 | `present` 声明 + git / 文件工具改动 | 同样两条，**再加目录扫描兜底**（bash、python、构建脚本的产物） |
 | 范围 | 单轮，轮末出现 | 整场会话，跨轮聚合 |
-| 能做什么 | 打开源文件 | 预览 / 打包 zip / 归档到指定目录 / 复制路径 |
+| 改动详情 | 轮末卡片里显示一次 | 行数徽章常驻，点开就地看 unified diff，还能按轮分组 |
+| 能做什么 | 打开源文件 | 预览 / 看差异 / 打包 zip / 归档到指定目录 / 复制路径 / 复制 Markdown 清单 |
 | Host 重启后 | 改动摘要活在内存里，重启即失 | 靠 mtime 重建（`present` 的描述会丢，见[已知限制](#已知限制)） |
 | 要不要 agent 配合 | 要模型记得调 `present` | **不要**，零登记 |
 
@@ -74,9 +75,9 @@ dsh plugin --profile desktop remove dsh-whale-catch
 │ 🐋 鱼篓            12 条鱼 · 3.4 MB  [刷新] │
 │ [全部 12] [📄 文档 7] [📊 表格 3] [🖼 图片 2] │
 ├──────────────────────────────────────┤
-│ ☑ 📄 项目周报.docx                    │
-│    第三季度周报 · 周报.docx      [预览] ⧉ │
-│    1.2 MB · 3 分钟前 · 交付              │
+│ ☑ 📄 项目周报.docx              +12 −3  │
+│    第三季度周报 · 周报.docx   [预览] [差异] ⧉ │
+│    1.2 MB · 3 分钟前 · 交付 · 改动         │
 │ ☐ 📊 预算表-2026.xlsx                  │
 │    plan.xlsx · 88 KB · 12 分钟前         │
 │ ☐ 🖼 产品手册.pdf                      │
@@ -87,6 +88,9 @@ dsh plugin --profile desktop remove dsh-whale-catch
 └──────────────────────────────────────┘
 ```
 
+- **差异** → 对内核记录过的改动就地展开 unified diff（`+` / `−` 着色、加粗的 `@@` 段头），二进制与超大文件给明确提示
+- **按轮分组** → 按"第 N 轮"把文件分段，一眼看出每轮产出了什么
+- **复制清单** → 把当前列表导成 Markdown（文件名、路径、体积、轮次、行数、描述），贴进周报或 Issue 就能读
 - **勾选** → 只打包选中的；一个都不选就是「全部打包」
 - **归档** → 复制到归档目录，保留相对路径，同名文件自动加 `(2)` 不覆盖；cwd 外的文件统一收进 `_external/`
 - **预览** → 新标签页打开原文件：图片 / PDF / 文本直接看，Office 走下载
@@ -99,7 +103,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 | 来源 | 从哪来 | 覆盖什么 |
 |---|---|---|
 | `presented` | 内核会话事件 `deliverables/presented` | 模型显式交付的文件，带描述与轮次 |
-| `changed` | 内核会话事件 `workspace/changes` + `ctx.workspaceChanges.summary()` | git 快照与文件工具改动 |
+| `changed` | 内核会话事件 `workspace/changes` + `ctx.workspaceChanges.summary()` / `.diff()` | git 快照与文件工具改动，带行数与 unified diff |
 | `scanned` | 会话工作目录扫描（mtime ≥ 会话创建时间） | bash / python / 构建脚本写出的文件 |
 
 扫描有边界：只在会话 cwd 内、不跟符号链接、跳过 `node_modules` / `.git` / 点开头目录、受深度 / 数量 / 体积上限约束。细节见 [docs/architecture.md](docs/architecture.md)。
@@ -126,7 +130,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 
 这些接口跑在本机 `127.0.0.1` 的 Host 上，所以按"浏览器里的第三方页面会来打"来设防：
 
-- **路径白名单**：`/file`、`/zip`、`/archive` 只接受**已经进筐**的路径（Host 内存里的登记表），没有任意文件读取面；`../` 穿越在登记表这一层就被挡掉。
+- **路径白名单**：`/file`、`/diff`、`/zip`、`/archive` 只接受**已经进筐**的路径（Host 内存里的登记表），没有任意文件读取面；`../` 穿越在登记表这一层就被挡掉。`/diff` 还多一道：只对带 `workspace/changes` 记录的条目开放。
 - **同源栅栏**：带 `Origin` 且 Host 对不上的请求一律 403；`Sec-Fetch-Site: cross-site` 同样拒绝。
 - **写操作必须 `application/json`**：跨站表单发不出这个 content-type，声明了它会触发预检，而预检打到本路由直接被 415 挡掉。
 - **内联预览加沙箱**：HTML / SVG 内联出去会继承 Host 源，所以这两类响应带 `Content-Security-Policy: sandbox`——文档照常渲染，脚本不执行、源变 opaque，没法反过来调本机接口。
@@ -138,6 +142,9 @@ dsh plugin --profile desktop remove dsh-whale-catch
 - 只覆盖**当前会话的工作目录**。跨会话、cwd 之外的文件不进筐（`present` 声明的绝对路径除外）。
 - Host 重启后，`present` 的描述与轮次号不会恢复；文件本身会靠 mtime 重新出现。
 - mtime 早于会话创建时间的文件不会进筐——"从别处复制进来但保留了旧时间戳"就属于这种。
+- **差异只在 Host 存活期间可看**：`workspace-changes` 把对比留在内存里，重启后旧轮次只剩文件名，面板会提示"没有可读的差异"。
+- 差异来自内核的 `workspaceChanges.diff()`；宿主版本没有这个能力时，面板同样只给提示，其余功能不受影响。
+- `/diff` 一次最多回传 1200 行，面板每条 hunk 最多铺 300 行——长 diff 会被截断并标注。
 - 归档目录默认在 `$DSH_HOME` 下，不会自动同步到网盘。
 - 预览走浏览器原生能力：PDF / 图片 / 文本能直接看，HTML / SVG 在沙箱里渲染（样式还在，脚本不执行），docx / xlsx 会触发下载（DSH 自带的文档预览更合适，欢迎 PR）。
 
@@ -145,7 +152,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 
 ```sh
 npm install
-npm test        # 40 项：扫描 / 合并 / zip 格式 / HTTP 栅栏 / client 注册 / 插件装载
+npm test        # 49 项：扫描 / 合并 / 改动元数据 / zip 格式 / HTTP 栅栏 / 差异裁剪与超时 / client 注册 / 插件装载
 npm run check   # 契约自检（包结构、patch、client.inject、meta、icon、依赖纪律…）
 npm run verify  # 两个都跑
 ```
@@ -156,10 +163,10 @@ npm run verify  # 两个都跑
 dsh-whale-catch/
 ├── lib/
 │   ├── index.js      # 插件入口：会话事件 → 鱼篓登记表，注册 HTTP 路由
-│   ├── basket.js     # 三来源合并、快照、路径准入（白名单）
+│   ├── basket.js     # 三来源合并、改动元数据、快照、路径准入（白名单）
 │   ├── scan.js       # 带边界的工作区扫描
 │   ├── zip.js        # 零依赖 ZIP 写入器（STORE + DEFLATE）
-│   ├── routes.js     # HTTP 接口
+│   ├── routes.js     # HTTP 接口（含差异裁剪与超时）
 │   ├── http.js       # 同源栅栏、JSON 收发、MIME
 │   └── client.js     # 右侧栏 tab + 面板（纯 JS，零构建）
 ├── locale/           # 市场与设置页展示用的元数据

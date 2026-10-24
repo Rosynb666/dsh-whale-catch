@@ -134,3 +134,117 @@ test('没有活跃 agent 且没给 cwd 时，basket 返回可读错误而不是�
   assert.equal(payload.error.code, 'no-cwd')
   assert.match(payload.error.message, /工作目录/)
 })
+
+test('workspace/changes 之后，/diff 用 seq + index 向内核要对比并原样返回', async (t) => {
+  const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-plugin-diff-'))
+  t.after(async () => fs.rm(cwd, { recursive: true, force: true }))
+  const file = path.join(cwd, 'app.js')
+  await fs.writeFile(file, 'const a = 1\n')
+
+  /** @type {{route?: any, listener?: any}} */
+  const captured = {}
+  const calls = []
+  const session = { id: 'session-diff', header: { cwd, createdAt: Date.now() - 60_000 } }
+  const summary = {
+    turn: 2,
+    cwd,
+    files: [{ path: 'app.js', display: 'app.js', added: 4, deleted: 1 }],
+    total: 1,
+    added: 4,
+    deleted: 1,
+  }
+  const ctx = {
+    get(service) {
+      if (service === 'agents') return { get: () => ({ session }) }
+      if (service === 'workspaceChanges') {
+        return {
+          summary: (sessionId, seq) => (sessionId === 'session-diff' && seq === 7 ? summary : undefined),
+          diff: async (sessionId, seq, index, signal) => {
+            calls.push({ sessionId, seq, index, aborted: signal.aborted })
+            return {
+              kind: 'text',
+              path: file,
+              display: 'app.js',
+              before: true,
+              after: true,
+              coarse: false,
+              hunks: [{ oldStart: 1, oldLines: 1, newStart: 1, newLines: 1, lines: ['-const a = 0', '+const a = 1'] }],
+            }
+          },
+        }
+      }
+      return undefined
+    },
+    effect(factory) {
+      const disposer = factory()
+      return typeof disposer === 'function' ? disposer : () => {}
+    },
+    on(event, listener) {
+      if (event === 'session/event') captured.listener = listener
+      return () => {}
+    },
+    webServer: {
+      register(route) {
+        captured.route = route
+        return () => {}
+      },
+    },
+  }
+
+  apply(ctx, {})
+  captured.listener(session, { seq: 7, type: 'workspace/changes', data: { turn: 2 } })
+
+  const server = http.createServer((req, res) => captured.route.handler(req, res))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const address = /** @type {{port: number}} */ (server.address())
+  t.after(() => new Promise((resolve) => server.close(resolve)))
+
+  const basket = await fetch(`http://127.0.0.1:${address.port}/whale-catch/api/basket?session=session-diff`).then((r) => r.json())
+  const entry = basket.value.files.find((item) => item.name === 'app.js')
+  assert.ok(entry, 'workspace/changes 的文件应当出现在鱼篓里')
+  assert.equal(entry.added, 4)
+  assert.equal(entry.deleted, 1)
+  assert.equal(entry.diffable, true)
+
+  const diff = await fetch(`http://127.0.0.1:${address.port}/whale-catch/api/diff?session=session-diff&path=app.js`).then((r) => r.json())
+  assert.equal(diff.ok, true)
+  assert.equal(diff.value.kind, 'text')
+  assert.deepEqual(diff.value.hunks[0].lines, ['-const a = 0', '+const a = 1'])
+  assert.deepEqual(calls, [{ sessionId: 'session-diff', seq: 7, index: 0, aborted: false }])
+})
+
+test('没有改动记录的文件请求 /diff 返回 404 no-change', async (t) => {
+  const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-plugin-nochange-'))
+  t.after(async () => fs.rm(cwd, { recursive: true, force: true }))
+  const session = { id: 'session-nochange', header: { cwd, createdAt: Date.now() - 60_000 } }
+
+  /** @type {{route?: any, listener?: any}} */
+  const captured = {}
+  const ctx = {
+    get(service) {
+      if (service === 'agents') return { get: () => ({ session }) }
+      if (service === 'workspaceChanges') return { summary: () => undefined, diff: async () => undefined }
+      return undefined
+    },
+    effect: (factory) => { factory(); return () => {} },
+    on: (event, listener) => { captured.listener = listener; return () => {} },
+    webServer: { register: (route) => { captured.route = route; return () => {} } },
+  }
+
+  apply(ctx, {})
+  captured.listener(session, {
+    seq: 1,
+    type: 'deliverables/presented',
+    data: { turn: 1, callId: 'call-1', files: [{ path: '报告.docx' }] },
+  })
+
+  const server = http.createServer((req, res) => captured.route.handler(req, res))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const address = /** @type {{port: number}} */ (server.address())
+  t.after(() => new Promise((resolve) => server.close(resolve)))
+
+  const response = await fetch(`http://127.0.0.1:${address.port}/whale-catch/api/diff?session=session-nochange&path=${encodeURIComponent('报告.docx')}`)
+  assert.equal(response.status, 404)
+  const payload = await response.json()
+  assert.equal(payload.error.code, 'no-change')
+})
