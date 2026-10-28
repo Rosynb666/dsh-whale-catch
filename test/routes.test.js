@@ -4,6 +4,8 @@ import http from 'node:http'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { createHash } from 'node:crypto'
+import { inflateRawSync } from 'node:zlib'
 import { API_PREFIX, createApi, trimDiff } from '../lib/routes.js'
 import { toPosix } from '../lib/kinds.js'
 
@@ -12,6 +14,47 @@ import { toPosix } from '../lib/kinds.js'
  * 这样测的是"客户端真的会发的那种请求"，而不是直接调内部函数。
  * @param {object} store
  */
+/**
+ * 手工解析 zip：从 EOCD 找中央目录，再按偏移读本地头。
+ * 不依赖任何 zip 库，这样测试本身也在验证格式而不是验证同一个实现。
+ * @param {Buffer} buffer
+ */
+function readZip(buffer) {
+  let eocd = -1
+  for (let i = buffer.length - 22; i >= 0; i -= 1) {
+    if (buffer.readUInt32LE(i) === 0x06054b50) {
+      eocd = i
+      break
+    }
+  }
+  assert.notEqual(eocd, -1, '找不到 EOCD')
+  const count = buffer.readUInt16LE(eocd + 10)
+  const centralOffset = buffer.readUInt32LE(eocd + 16)
+
+  const entries = []
+  let cursor = centralOffset
+  for (let i = 0; i < count; i += 1) {
+    assert.equal(buffer.readUInt32LE(cursor), 0x02014b50)
+    const method = buffer.readUInt16LE(cursor + 10)
+    const crc = buffer.readUInt32LE(cursor + 16)
+    const compressedSize = buffer.readUInt32LE(cursor + 20)
+    const size = buffer.readUInt32LE(cursor + 24)
+    const nameLength = buffer.readUInt16LE(cursor + 28)
+    const localOffset = buffer.readUInt32LE(cursor + 42)
+    const name = buffer.subarray(cursor + 46, cursor + 46 + nameLength).toString('utf8')
+
+    const localNameLength = buffer.readUInt16LE(localOffset + 26)
+    const localExtraLength = buffer.readUInt16LE(localOffset + 28)
+    const dataStart = localOffset + 30 + localNameLength + localExtraLength
+    const raw = buffer.subarray(dataStart, dataStart + compressedSize)
+    const data = method === 8 ? inflateRawSync(raw) : raw
+
+    entries.push({ name, method, crc, size, data })
+    cursor += 46 + nameLength + buffer.readUInt16LE(cursor + 30) + buffer.readUInt16LE(cursor + 32)
+  }
+  return entries
+}
+
 async function serve(store, overrides) {
   const handler = createApi({
     store,
@@ -388,4 +431,38 @@ test('trimDiff 只裁 text，并按行首重算 hunk 的行数', () => {
   const empty = trimDiff({ kind: 'text', hunks: [] }, 10)
   assert.deepEqual(empty.hunks, [])
   assert.equal(empty.trimmed, false)
+})
+
+test('zip 里带交付清单：manifest 与清单.md 都在，sha256 对得上', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const server = await serve(await makeStore(dir, [
+    { rel: '报告.docx', content: 'docx' },
+    { rel: 'note.txt', content: 'hello' },
+  ]))
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  const response = await fetch(`${server.base}zip`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'session-test', paths: [] }),
+  })
+  assert.equal(response.status, 200)
+
+  const entries = readZip(Buffer.from(await response.arrayBuffer()))
+  const manifestEntry = entries.find((entry) => entry.name === '_whale-catch/manifest.json')
+  assert.ok(manifestEntry, 'manifest 必须进包')
+
+  const manifest = JSON.parse(manifestEntry.data.toString('utf8'))
+  assert.equal(manifest.session, 'session-test')
+  assert.equal(manifest.files.length, 2, '清单只数业务文件，不含清单自己')
+
+  const doc = manifest.files.find((file) => file.name === '报告.docx')
+  assert.equal(doc.sha256, createHash('sha256').update('docx').digest('hex'))
+
+  const checklist = entries.find((entry) => entry.name === '_whale-catch/交付清单.md')
+  assert.ok(checklist, '清单.md 必须进包')
+  assert.match(checklist.data.toString('utf8'), /\| 报告\.docx \|/)
 })
