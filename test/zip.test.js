@@ -99,7 +99,9 @@ test('第三方实现能正确读取（unzip / Python zipfile 可用时）', asy
 
   // 1) Info-ZIP 的完整性检查：只验 CRC 与目录结构，不验中文名落盘
   const hasUnzip = await run('unzip', ['-v']).then(() => true, () => false)
-  if (hasUnzip) await run('unzip', ['-t', file])
+  // Windows 上的 unzip 常来自 Git for Windows，对 UTF-8 条目名的行为不稳定；
+  // 中文名与内容交给 Python zipfile 交叉验证。
+  if (hasUnzip && process.platform !== 'win32') await run('unzip', ['-t', file])
 
   // 2) Python 的 zipfile 尊重 UTF-8 位标记，用它交叉验证条目名与内容。
   //    （macOS 自带的老 unzip 会把 UTF-8 名按 OEM 码页落盘，不能拿来验中文名）

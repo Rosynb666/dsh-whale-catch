@@ -48,3 +48,12 @@ jobs:
             tail -n 200 test-output.txt 2>/dev/null || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # 公开仓库的 Actions 日志接口仍要 admin；annotation 是公开可读的，
+      # 万一 summary 也看不到，至少能从 check-run annotations 取到末尾输出。
+      - name: 失败详情（annotation）
+        if: failure()
+        shell: bash
+        run: |
+          MSG="$(tail -n 120 test-output.txt 2>/dev/null | sed 's/%/%25/g; s/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+          echo "::error title=Windows test output::$MSG"
