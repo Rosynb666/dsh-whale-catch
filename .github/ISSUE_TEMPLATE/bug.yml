@@ -1,0 +1,56 @@
+name: Bug report
+description: 面板、打包、归档、预览或安装出了问题
+title: '[Bug] '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先确认不是[已知限制](https://github.com/Rosynb666/dsh-whale-catch#已知限制)里的行为。
+        安全相关问题请不要走公开 issue，改用 Security → Report a vulnerability。
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 插件版本
+      placeholder: 0.2.2
+    validations:
+      required: true
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DSH / Node 版本
+      placeholder: DSH 0.2.x, Node 22.19 / 24.x
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: 系统
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 越具体越好：打开了哪个会话、点了什么、文件在不在 cwd 内
+      placeholder: |
+        1. 打开右侧栏鱼篓
+        2. 勾选 …
+        3. 点击 …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果 / 实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图
+      description: 请先去掉本机路径、会话 id、密钥等隐私信息
+      render: shell

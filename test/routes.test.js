@@ -6,7 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
 import { inflateRawSync } from 'node:zlib'
-import { API_PREFIX, createApi, trimDiff } from '../lib/routes.js'
+import { API_PREFIX, createApi, redactHome, trimDiff } from '../lib/routes.js'
 import { toPosix } from '../lib/kinds.js'
 
 /**
@@ -65,7 +65,10 @@ async function serve(store, overrides) {
   const address = /** @type {{port: number}} */ (server.address())
   return {
     base: `http://127.0.0.1:${address.port}${API_PREFIX}`,
-    close: () => new Promise((resolve) => server.close(resolve)),
+    close: () => new Promise((resolve) => {
+      server.closeAllConnections?.()
+      server.close(resolve)
+    }),
   }
 }
 
@@ -465,4 +468,164 @@ test('zip 里带交付清单：manifest 与清单.md 都在，sha256 对得上',
   const checklist = entries.find((entry) => entry.name === '_whale-catch/交付清单.md')
   assert.ok(checklist, '清单.md 必须进包')
   assert.match(checklist.data.toString('utf8'), /\| 报告\.docx \|/)
+})
+
+test('cwd 外的文件在 zip 里也进 _external/，manifest 路径一致', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-outside-zip-'))
+  const outside = path.join(outsideDir, '外部交付.pdf')
+  await fs.writeFile(outside, 'pdf')
+  const server = await serve(await makeStore(dir, [{ rel: toPosix(outside), path: outside, size: 3 }]))
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+    await fs.rm(outsideDir, { recursive: true, force: true })
+  })
+
+  const response = await fetch(`${server.base}zip`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'session-test', paths: [] }),
+  })
+  assert.equal(response.status, 200)
+
+  const entries = readZip(Buffer.from(await response.arrayBuffer()))
+  const fileEntry = entries.find((entry) => entry.name === '_external/外部交付.pdf')
+  assert.ok(fileEntry, 'cwd 外文件应统一进 _external/')
+  assert.equal(fileEntry.data.toString(), 'pdf')
+  assert.equal(entries.some((entry) => entry.name.startsWith('var/')), false, '不能把绝对路径镜像进 zip')
+
+  const manifest = JSON.parse(entries.find((entry) => entry.name === '_whale-catch/manifest.json').data.toString('utf8'))
+  assert.equal(manifest.files[0].path, '_external/外部交付.pdf', 'manifest 记录的路径要和包内一致')
+})
+
+test('archive 把超大文件记入 failed，不静默成功', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const server = await serve(await makeStore(dir, [
+    { rel: 'ok.txt', content: 'ok' },
+    { rel: 'huge.bin', content: 'x', size: 2 * 1024 * 1024 },
+  ]))
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  const archived = await fetch(`${server.base}archive`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'session-test', paths: [] }),
+  }).then((r) => r.json())
+
+  assert.equal(archived.ok, true)
+  assert.equal(archived.value.copied.length, 1)
+  assert.equal(archived.value.failed.length, 1)
+  assert.equal(archived.value.failed[0].path, 'huge.bin')
+  assert.equal(archived.value.failed[0].reason, 'too-large')
+})
+
+test('file 支持 Range / ETag，越界回 416', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const server = await serve(await makeStore(dir, [{ rel: 'note.txt', content: 'hello world' }]))
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+  const fileUrl = `${server.base}file?session=session-test&path=${encodeURIComponent(path.join(dir, 'note.txt'))}`
+
+  const partial = await fetch(fileUrl, { headers: { Range: 'bytes=0-4' } })
+  assert.equal(partial.status, 206)
+  assert.equal(partial.headers.get('content-range'), 'bytes 0-4/11')
+  assert.equal(partial.headers.get('accept-ranges'), 'bytes')
+  assert.equal(await partial.text(), 'hello')
+
+  const suffix = await fetch(fileUrl, { headers: { Range: 'bytes=-5' } })
+  assert.equal(suffix.status, 206)
+  assert.equal(await suffix.text(), 'world')
+
+  const bad = await fetch(fileUrl, { headers: { Range: 'bytes=100-200' } })
+  assert.equal(bad.status, 416)
+  assert.equal(bad.headers.get('content-range'), 'bytes */11')
+
+  const head = await fetch(fileUrl, { method: 'HEAD' })
+  assert.equal(head.status, 200)
+  assert.equal(head.headers.get('content-length'), '11')
+  const etag = head.headers.get('etag')
+  assert.ok(etag, 'HEAD 应回 ETag')
+
+  const cached = await fetch(fileUrl, { headers: { 'if-none-match': etag } })
+  assert.equal(cached.status, 304)
+})
+
+test('请求体上限可通过配置收紧', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const server = await serve(await makeStore(dir), { maxBodyBytes: 32 })
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  const response = await fetch(`${server.base}refresh`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'session-test', padding: 'x'.repeat(64) }),
+  })
+  assert.equal(response.status, 413)
+})
+
+test('redactHome 把主目录前缀换成 ~，其它路径原样返回', () => {
+  assert.equal(redactHome(os.homedir()), '~')
+  assert.equal(redactHome(path.join(os.homedir(), '项目', 'a.txt')), '~' + path.sep + path.join('项目', 'a.txt'))
+  assert.equal(redactHome(path.join(os.tmpdir(), 'not-home')), path.join(os.tmpdir(), 'not-home'))
+})
+
+test('archive 拒绝把归档目录设成会话工作目录本身', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const store = await makeStore(dir)
+  const snapshot = store.snapshot
+  store.snapshot = async (...args) => ({ ...(await snapshot(...args)), archiveDir: dir })
+  const server = await serve(store)
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  const response = await fetch(`${server.base}archive`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'session-test', paths: [] }),
+  })
+  assert.equal(response.status, 400)
+  assert.equal((await response.json()).error.code, 'archive-dir-cwd')
+})
+
+test('archive 不跟随归档目录里的符号链接', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-outside-link-'))
+  await fs.mkdir(path.join(dir, 'sub'), { recursive: true })
+  const server = await serve(await makeStore(dir, [{ rel: 'sub/file.txt', content: 'x' }]))
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+    await fs.rm(outside, { recursive: true, force: true })
+  })
+
+  const root = path.join(dir, '_archive', 'session-test')
+  await fs.mkdir(root, { recursive: true })
+  try {
+    await fs.symlink(outside, path.join(root, 'sub'), 'dir')
+  } catch {
+    t.skip('当前平台不允许创建目录符号链接')
+    return
+  }
+
+  const response = await fetch(`${server.base}archive`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'session-test', paths: [] }),
+  })
+  const payload = await response.json()
+  assert.equal(payload.ok, true)
+  assert.equal(payload.value.copied.length, 0)
+  assert.equal(payload.value.failed[0].reason, 'unsafe-path')
+  assert.equal(await fs.access(path.join(outside, 'file.txt')).then(() => true, () => false), false)
 })

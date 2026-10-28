@@ -20,15 +20,16 @@
    │   changes       │   │                            └─► Basket.addChanged(files, turn, seq)     │
    └ turn/end        │   └ turn/end ────────────────► scheduleScan()  (debounce 1.2s)            │
                      │                                                                             │
-  GET /basket ──────►│ snapshot() ──► 必要时 scanWorkspace() ──► Basket.addScan()                  │
+  GET /basket ──────►│ 首次打开才 scanWorkspace()；之后只读缓存 ──► Basket.snapshot()             │
                      │                        │                                                    │
                      │                        └─ 合并三来源（键 = 绝对路径）──► files[] + totals      │
+  POST /refresh ────►│ 强制 scanWorkspace()（等后台扫描结束后再扫）                                │
                      │                                                                             │
   GET /diff ────────►│ resolve(path)+resolveChange() 白名单 ──► workspaceChanges.diff(seq, index)   │
                      │                        └─ trimDiff() ──► hunks（1200 行预算）                 │
-  POST /zip ────────►│ resolve(path) 白名单 ──► 读入内存 + sha256 ──► buildZip()（附清单）          │
-  POST /archive ────►│ resolve(path) ──► copyFile 到 archiveDir/<sessionId>/…                     │
-  GET  /file ───────►│ resolve(path) ──► createReadStream                                         │
+  POST /zip ────────►│ resolve(path) 白名单 ──► 逐文件读 + sha256 ──► writeZip() 流式写响应（附清单）│
+  POST /archive ────►│ resolve(path) ──► copyFile 到 archiveDir/<sessionId>/…；失败进 failed      │
+  GET  /file ───────►│ resolve(path) ──► Range / ETag ──► createReadStream                       │
                      └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -56,21 +57,25 @@
 ## 采集时机与性能
 
 - `turn/end` 触发一次延迟 1.2s 的扫描（给写盘留时间），`unref()` 掉，不阻止进程退出。
-- `GET /basket` 也会按需扫描，但同一会话 1.5s 内只扫一次；并发请求共用同一个 Promise。
-- 扫描只走一遍目录，访问目录项有上限（默认 20000），命中 `maxFiles` 就停并标记 `truncated`。
-- 会话状态最多保留 40 个，超出按插入序淘汰（同时清掉定时器）。
+- `GET /basket` **只在首次打开（或 cwd 变化）时扫一次**，之后直接读缓存；面板 5 秒轮询不会反复扫盘。
+- 手动 `POST /refresh` 才强制重扫；如果后台扫描正在跑，先等它结束再扫，避免拿到旧快照。
+- 同一会话的并发扫描共用同一个 Promise；扫描只走一遍目录，访问目录项有上限（默认 20000），命中 `maxFiles` 就停并标记 `truncated`。
+- `Basket.snapshot()` 的 stat 用 16 路并发限流，避免 800 个文件串行拖慢一次轮询。
+- 会话状态最多保留 40 个，按 LRU 淘汰（命中时移到队尾，同时清掉淘汰者的定时器）。
 
 ## 安全模型
 
 威胁不是"本机其他进程"（它们本来就能读文件），而是**浏览器里的第三方页面借用户身份打 loopback**：
 
-1. `Origin` 与 `Host` 不一致 → 403；`Sec-Fetch-Site: cross-site` → 403。
+1. `Origin` 与 `Host` 不一致 → 403；`Sec-Fetch-Site: cross-site` → 403；Host 还必须 `localhost`、IP 字面量或 `allowHosts` 里的名字。DNS rebinding 的攻击者只能用域名，因此“Origin 与 Host 同时是 evil.example”也会被挡住；局域网 IP 不受影响，反代域名走 `allowHosts`。
 2. 写操作必须 `application/json`：跨站表单发不出该 content-type；声明它会触发预检，而本路由只接受已声明的写方法与 JSON，预检直接 415。
 3. 路径白名单：`Basket.resolve()` 只认登记表里的绝对路径，`../` 与任意路径在入口就返回 404。`/diff` 还要多过一道 `Basket.resolveChange()`：只有带 `seq + index` 的改动条目可读，扫描/`present` 进来的文件即便在筐里也没有对比可看。
-4. zip 条目名过 `safeEntryName()`（去 `..`、去前导斜杠）；归档路径 `resolve` 后校验 `startsWith(root + sep)`，cwd 外的文件统一落在 `_external/<文件名>`，不做绝对路径镜像。
-5. 内联预览的脚本隔离：`text/html`、`image/svg+xml` 这类会执行脚本的文档，`/file` 响应带 `Content-Security-Policy: sandbox`——文档照常渲染，但脚本不执行、源变 opaque，无法反手请求本机接口（0.1.2 及以前是裸奔的）。
-6. 上限：单文件 64 MB、打包总量 512 MB、条目数 800、请求体 1 MB。超限文件被跳过时用 `X-Whale-Catch-Skipped` 回传数量，界面不会「静默少文件」。
-7. 差异的等待与取消：`/diff` 默认 8s 超时回 504；客户端断开时 `AbortSignal` 一路传到内核，读盘会真的停下。回传前按 1200 行裁剪，被截断 hunk 的 `oldLines` / `newLines` 按行首前缀重算，`@@` 头不会撒谎。
+4. zip 条目名过 `safeEntryName()`（去 `..`、去前导斜杠），清单名预留防撞；归档路径 `resolve` 后校验 `startsWith(root + sep)`，`mkdir` 后再用 `realpath` 确认父目录仍在归档根内，符号链接穿越记 `unsafe-path`；`archiveDir == cwd` 直接拒绝。cwd 外的文件在 zip 与归档里都进 `_external/<文件名>`，不做绝对路径镜像，重名加 `(2)`。
+5. 归档与 zip 共用单文件上限：超限文件在 zip 里进 `skipped`、在归档里进 `failed`，面板会显示失败数，不再静默成功。
+6. 内联预览的脚本隔离：`text/html`、`image/svg+xml` 这类会执行脚本的文档，`/file` 响应带 `Content-Security-Policy: sandbox`——文档照常渲染，但脚本不执行、源变 opaque，无法反手请求本机接口（0.1.2 及以前是裸奔的）。
+7. 上限：单文件 64 MB、打包总量 512 MB、条目数 800、请求体 1 MB，均可通过配置调整。超限文件被跳过时用 `X-Whale-Catch-Skipped` 回传数量，界面不会「静默少文件」。
+8. 差异的等待与取消：`/diff` 默认 8s 超时回 504；客户端断开时 `AbortSignal` 一路传到内核，读盘会真的停下。回传前按 1200 行裁剪，被截断 hunk 的 `oldLines` / `newLines` 按行首前缀重算，`@@` 头不会撒谎。
+9. `/file` 支持单段 `Range`（206/416）与 `ETag`，PDF/大文件可拖动进度；响应关闭时读取流会 `destroy()`，不在后台继续读盘。
 
 ## 生命周期
 
@@ -94,14 +99,17 @@
 - `present` 描述的持久化。
 - 差异只在 Host 存活期间可看：内核不持久化对比，重启后旧轮次只剩文件名。
 - 更聪明的类型识别（现在按后缀；Office 文档内部类型没有嗅探）。
-- 归档目录的自动整理策略（按日期/按项目）。
+- 归档目录的自动整理策略（按日期/按项目）；也没有清理策略。
 - 预览没有复用 DSH 的 Document Preview，Office 文档目前走浏览器下载。
+- 点开头的文件（`.env`、`.gitignore`）有意不扫描，避免把密钥类文件自动收进筐；需要交付时用 `present`。
+- 文件列表一次渲染全部行，没有排序或虚拟列表；搜索只做名称/路径/描述的子串匹配，800 条以上仍会开始变卡。
+- zip 的 manifest 会写 cwd（主目录前缀脱敏为 `~`）与会话 id，分享前需要自己留意。
 
 ## 测试策略
 
 - **纯函数**（`scan` / `basket` / `zip` / `http`）单独测，不碰 Host。
-- **路由**用真实 `node:http` 服务 + `fetch` 打过去，测的是客户端实际会发的请求。
+- **路由**用真实 `node:http` 服务 + `fetch` 打过去，测的是客户端实际会发的请求；覆盖 Range/ETag、cwd 外 zip 路径、归档失败与超大文件跳过。
 - **client bundle** 用假 `window.__ModuleLoader__` + 假 React 装配一遍，断言注册了正确的 tab/slot/locale，并检查中英文字典键集一致。
-- **插件入口**用假 `ctx` 装配，模拟 `deliverables/presented` 事件后真的能从 HTTP 读到文件。
+- **插件入口**用假 `ctx` 装配，模拟 `deliverables/presented` 事件后真的能从 HTTP 读到文件；并验证 GET /basket 只读缓存、POST /refresh 才重扫。
 - **差异**：`trimDiff` 用纯函数测预算与行数重算；`/diff` 用真实 HTTP 测裁剪、无能力降级与超时中止；插件入口测 `seq + index` 真的透传到 `workspaceChanges.diff()`。
-- **zip** 用手写解析 + Python `zipfile` 交叉验证（macOS 自带 unzip 对 UTF-8 条目名的落盘行为不可靠，所以不用它验中文名）。
+- **zip** 用手写解析 + Python `zipfile` 交叉验证（macOS 自带 unzip 对 UTF-8 条目名的落盘行为不可靠，所以不用它验中文名）；流式写入器用同一套解析验证，已压缩格式断言走 STORE。

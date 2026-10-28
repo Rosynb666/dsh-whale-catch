@@ -68,14 +68,15 @@ test('safeEntryName 去掉上跳段与前导斜杠', () => {
   assert.equal(safeEntryName(''), 'file')
 })
 
-test('自解析：中文名与内容都能原样读回', () => {
-  const zip = buildZip([
+test('自解析：中文名与内容都能原样读回', async () => {
+  const zip = await buildZip([
     { name: '报告/第一次.docx', data: Buffer.from('word-bytes'), mtimeMs: Date.now() },
     { name: 'notes.txt', data: Buffer.from('hello'.repeat(100)), mtimeMs: Date.now() },
+    { name: '截图.png', data: Buffer.from('png'.repeat(100)), mtimeMs: Date.now() },
   ])
   assert.equal(zip.subarray(0, 2).toString('ascii'), 'PK')
   const entries = readZip(zip)
-  assert.equal(entries.length, 2)
+  assert.equal(entries.length, 3)
   const doc = entries.find((entry) => entry.name === '报告/第一次.docx')
   assert.ok(doc, '中文条目名应保留')
   assert.equal(doc.data.toString(), 'word-bytes')
@@ -84,13 +85,14 @@ test('自解析：中文名与内容都能原样读回', () => {
   // 能压小的条目必须真的用了 deflate，否则这个写入器就只是 STORE
   assert.equal(notes.method, 8)
   assert.equal(doc.method, 0, '不可压缩的小内容应退回 STORE')
+  assert.equal(entries.find((entry) => entry.name === '截图.png').method, 0, '已压缩格式直接 STORE')
 })
 
 test('第三方实现能正确读取（unzip / Python zipfile 可用时）', async (t) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-zip-'))
   const file = path.join(dir, 'basket.zip')
   const payload = Buffer.from('「深海鱼篓」测试内容\n'.repeat(50))
-  await fs.writeFile(file, buildZip([
+  await fs.writeFile(file, await buildZip([
     { name: 'deep/鱼篓.txt', data: payload, mtimeMs: Date.now() },
     { name: 'raw.bin', data: Buffer.from([0, 1, 2, 3, 4]), mtimeMs: Date.now() },
   ]))

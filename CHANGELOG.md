@@ -2,6 +2,38 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.2.2] - 2026-10-28
+
+### 性能
+
+- **GET /basket 不再每次扫盘**：首次打开（或 cwd 变化）扫一次，之后直接读缓存；面板 5 秒轮询不再触发全量目录遍历。手动「刷新」与 `turn/end` 的延迟扫描仍然生效。
+- **zip 改为流式写入**：逐文件读取、异步 deflate、边压边写 HTTP 响应，不再先把整包攒进内存；内存里最多只有一个文件。jpg/png/mp4/zip 等已压缩格式直接 STORE。
+- `Basket.snapshot()` 的文件 stat 改为 16 路并发限流，减少大筐轮询的等待。
+- 会话表从插入序淘汰改为 LRU，长期在用的会话不会因为创建得早而被挤掉。
+
+### 修复
+
+- cwd 外的文件在 zip 里也统一进 `_external/`，不再镜像 `var/folders/…` 或 `Users/…` 绝对路径；manifest 记录包内真实路径，重名自动加 `(2)`。
+- 归档超过单文件上限的文件会进入 `failed`，面板显示「成功 N / 失败 M」，不再静默成功。
+- 代码文件（`.py` / `.ts` / `.yml` / `.sh` / `.sql` 等）按 `text/plain` 内联，点「预览」不再触发下载。
+- `/file` 支持单段 `Range`（206/416）、`ETag` 与 `Last-Modified`；客户端断开时销毁读取流。
+- 同源检查增加 Host 白名单：只接受 `localhost`、IP 字面量与配置的 `allowHosts`，堵住 DNS rebinding 下「Origin 与 Host 同时是攻击者域名」的绕过。
+- 客户端修复 diff 双击/切换时旧响应覆盖新状态、5 秒轮询无 in-flight 保护导致请求堆积的问题；zip/archive 的业务错误码补了本地化文案。
+- zip 清单文件名预留防撞，工作区里真有同名文件时不再产生重复条目。
+- 归档拒绝「archiveDir == 会话 cwd」的配置；归档根目录内的符号链接穿越用 `realpath` 挡掉，不再跟着写到根目录外。
+- zip manifest 里的 cwd 会把用户主目录前缀改成 `~`，分享时少泄露一点本机路径。
+
+### 新增
+
+- 配置项 `maxZipBytes` / `maxBodyBytes` / `allowHosts`，README 的「全部可配」现在与实现一致。
+- `/archive` 的 `failed` 原因列表、zip 的 `name-too-long` 错误码。
+- 面板增加按文件名、路径或描述搜索，和分类 chip 一起过滤。
+
+### 其他
+
+- 测试 50 → 60 项：GET 缓存与 refresh、LRU 淘汰、外部 zip 路径、归档失败、Range/ETag、MIME 代码后缀、Host 白名单、parseRange、请求体上限、归档目录安全、manifest 脱敏。
+- 文档同步：扫描边界（点文件）、面板轮询行为、zip/归档外部路径、Host 白名单与 manifest 隐私提示。
+
 ## [0.2.1] - 2026-10-28
 
 ### 新增

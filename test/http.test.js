@@ -5,9 +5,11 @@ import {
   contentDisposition,
   contentTypeFor,
   hasJsonContentType,
+  isAllowedHost,
   isInlineType,
   isSameOrigin,
   needsSandbox,
+  parseRange,
   readJsonBody,
 } from '../lib/http.js'
 
@@ -21,9 +23,17 @@ function req(headers) {
 test('isSameOrigin：无 Origin 放行，同源放行，跨源拒绝', () => {
   assert.equal(isSameOrigin(req({ host: '127.0.0.1:19387' })), true)
   assert.equal(isSameOrigin(req({ host: '127.0.0.1:19387', origin: 'http://127.0.0.1:19387' })), true)
+  assert.equal(isSameOrigin(req({ host: 'localhost:19387', origin: 'http://localhost:19387' })), true)
   assert.equal(isSameOrigin(req({ host: '127.0.0.1:19387', origin: 'http://evil.example' })), false)
   assert.equal(isSameOrigin(req({ host: '127.0.0.1:19387', origin: 'null' })), false)
   assert.equal(isSameOrigin(req({ host: '127.0.0.1:19387', 'sec-fetch-site': 'cross-site' })), false)
+  assert.equal(isSameOrigin(req({ host: 'evil.example', origin: 'http://evil.example' })), false, 'DNS rebinding：域名 Host 一律拒绝')
+  assert.equal(isSameOrigin(req({ host: 'evil.example' })), false)
+  assert.equal(isSameOrigin(req({ host: '192.168.1.5:19387' })), true, '局域网 IP 仍然可用')
+  assert.equal(isSameOrigin(req({ host: 'dsh.local:19387' }), ['dsh.local']), true, '配置放行的域名可用')
+  assert.equal(isAllowedHost('127.0.0.1:1'), true)
+  assert.equal(isAllowedHost('[::1]:1'), true)
+  assert.equal(isAllowedHost('dsh.local:1'), false)
 })
 
 test('contentTypeFor 与 isInlineType：pdf/图片/文本内联，docx 走附件', () => {
@@ -32,6 +42,22 @@ test('contentTypeFor 与 isInlineType：pdf/图片/文本内联，docx 走附件
   assert.equal(isInlineType(contentTypeFor('a.pdf')), true)
   assert.equal(isInlineType(contentTypeFor('a.docx')), false)
   assert.equal(contentTypeFor('no-extension'), 'application/octet-stream')
+  for (const name of ['main.py', 'app.ts', 'view.tsx', 'deploy.yml', 'run.sh', 'query.sql']) {
+    assert.match(contentTypeFor(name), /^text\/plain/, `${name} 应该内联成纯文本`)
+    assert.equal(isInlineType(contentTypeFor(name)), true)
+  }
+})
+
+test('parseRange：单段、后缀、越界与非法值', () => {
+  assert.deepEqual(parseRange('bytes=0-4', 11), { start: 0, end: 4 })
+  assert.deepEqual(parseRange('bytes=6-', 11), { start: 6, end: 10 })
+  assert.deepEqual(parseRange('bytes=-5', 11), { start: 6, end: 10 })
+  assert.deepEqual(parseRange('bytes=99-100', 11), { unsatisfiable: true })
+  assert.deepEqual(parseRange('bytes=0-999', 11), { start: 0, end: 10 })
+  assert.equal(parseRange('bytes=5-2', 11), null)
+  assert.equal(parseRange('bytes=0-1,3-4', 11), null)
+  assert.equal(parseRange('items=0-1', 11), null)
+  assert.equal(parseRange(undefined, 11), null)
 })
 
 test('needsSandbox：只有能执行脚本的文档类型才加 CSP 沙箱', () => {

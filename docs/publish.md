@@ -97,7 +97,7 @@ npm pack --dry-run
 npm pack --dry-run --cache="$(mktemp -d)"
 ```
 
-应该看到：`lib/`、`locale/`、`cordis.patch.yml`、`icon.svg`、`README*`、`CHANGELOG.md`、`docs/architecture.md`、`LICENSE`。
+应该看到：`lib/`、`locale/`、`cordis.patch.yml`、`icon.svg`、`README*`、`CHANGELOG.md`、`docs/architecture.md`、`screenshots.json`、`LICENSE`。
 
 ## 4. 让社区能找到
 
@@ -112,7 +112,7 @@ npm run verify
 ```
 
 - [ ] `npm run check` 全绿（包结构 / patch / client.inject / meta / icon / 依赖纪律）
-- [ ] `npm test` 全绿（50 项）
+- [ ] `npm test` 全绿（60 项）
 - [ ] npm 发布路径可用：npm 包里已绑定 Trusted Publishing，或仓库里有有效的 `NPM_TOKEN` 回落
 - [ ] `npm pack --dry-run` 的文件清单符合预期
 - [ ] 在干净的 profile 里装一次：`dsh plugin --profile desktop add <tarball 或仓库地址>`

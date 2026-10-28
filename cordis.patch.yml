@@ -12,13 +12,19 @@
       # config:
       #   # 归档目录；缺省 $DSH_HOME/whale-catch/archive/<sessionId>
       #   archiveDir: ~/Documents/鱼篓归档   # ~ 展开到主目录
-      #   # 额外忽略的目录名（内置已忽略 node_modules / .git / 点开头目录等）
+      #   # 额外忽略的目录名（内置已忽略 node_modules / .git / 点开头的文件与目录等）
       #   ignore:
       #     - dist
       #     - build
       #   # 单个文件上限（字节），超过的文件只列出、不打包
       #   maxFileBytes: 67108864
+      #   # 打包总量上限（字节）
+      #   maxZipBytes: 536870912
+      #   # 请求体上限（字节）
+      #   maxBodyBytes: 1048576
       #   # 最多收录多少个文件
       #   maxFiles: 800
       #   # 目录遍历深度
       #   maxDepth: 6
+      #   # 额外放行的 Host 名；默认只认 localhost / IP 字面量
+      #   allowHosts: []

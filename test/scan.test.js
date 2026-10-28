@@ -36,7 +36,7 @@ test('只收 mtime 不早于 sinceMs 的文件', async () => {
   }
 })
 
-test('跳过 node_modules、点目录与额外 ignore', async () => {
+test('跳过 node_modules、点开头的文件与目录、额外 ignore', async () => {
   const dir = await tempDir()
   try {
     await fs.mkdir(path.join(dir, 'node_modules', 'x'), { recursive: true })

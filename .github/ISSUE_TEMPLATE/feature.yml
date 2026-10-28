@@ -1,0 +1,33 @@
+name: Feature request
+description: 想要新的采集来源、面板操作或打包能力
+title: '[Feature] '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        先看一下 README 的「已知限制」和架构文档里的「已知缺口」，避免重复提。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你现在的痛点
+      description: 现在的工作流卡在哪一步？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 希望怎么做
+      description: 如果能说清交互或接口更好
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 考虑过的替代方案
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: 约束确认
+      options:
+        - label: 这个需求不需要给插件新增会话事件类型
+        - label: 这个需求不引入新的运行时依赖（或已说明为什么必须）

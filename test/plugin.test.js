@@ -5,7 +5,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { readFileSync } from 'node:fs'
-import { Config, apply, inject, name, normalizeConfig, version } from '../lib/index.js'
+import { Config, apply, createStore, inject, name, normalizeConfig, version } from '../lib/index.js'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 
@@ -24,6 +24,9 @@ test('Config 接受空对象并给出默认值（profile 行没写 config 也不
   assert.equal(normalized.maxFiles, 800)
   assert.equal(normalized.maxDepth, 6)
   assert.equal(normalized.maxFileBytes, 64 * 1024 * 1024)
+  assert.equal(normalized.maxZipBytes, 512 * 1024 * 1024)
+  assert.equal(normalized.maxBodyBytes, 1024 * 1024)
+  assert.deepEqual(normalized.allowHosts, [])
   assert.ok(normalized.archiveDir.endsWith(path.join('whale-catch', 'archive')))
 })
 
@@ -35,13 +38,19 @@ test('normalizeConfig 把越界与脏值夹回安全区间', () => {
     maxDepth: 999,
     maxFileBytes: 'big',
     lookbackMinutes: 0,
+    maxZipBytes: 1,
+    maxBodyBytes: 99999999,
+    allowHosts: [' NAS.Local ', '', 42],
   })
-  assert.equal(normalized.archiveDir, '/tmp/鱼篓')
+  assert.equal(normalized.archiveDir, path.resolve('/tmp/鱼篓'))
   assert.deepEqual(normalized.ignore, ['dist', 'build'])
   assert.equal(normalized.maxFiles, 800, '非法 maxFiles 回落到默认值')
   assert.equal(normalized.maxDepth, 24, '过大的 maxDepth 被夹到上限')
   assert.equal(normalized.maxFileBytes, 64 * 1024 * 1024)
   assert.equal(normalized.lookbackMinutes, 720)
+  assert.equal(normalized.maxZipBytes, 512 * 1024 * 1024, '过小的打包上限回落到默认值')
+  assert.equal(normalized.maxBodyBytes, 16 * 1024 * 1024, '请求体上限夹到 16 MB')
+  assert.deepEqual(normalized.allowHosts, ['nas.local'])
 })
 
 test('archiveDir 开头的 ~ 会展开到用户主目录', () => {
@@ -247,4 +256,91 @@ test('没有改动记录的文件请求 /diff 返回 404 no-change', async (t) =
   assert.equal(response.status, 404)
   const payload = await response.json()
   assert.equal(payload.error.code, 'no-change')
+})
+
+test('GET /basket 只读缓存，POST /refresh 才重新扫盘', async (t) => {
+  const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-plugin-scan-'))
+  t.after(async () => fs.rm(cwd, { recursive: true, force: true }))
+  await fs.writeFile(path.join(cwd, 'first.txt'), 'one')
+
+  /** @type {{route?: any}} */
+  const captured = {}
+  const session = { id: 'session-cache', header: { cwd, createdAt: Date.now() - 60_000 } }
+  const ctx = {
+    get(service) {
+      if (service === 'agents') return { get: () => ({ session }) }
+      return undefined
+    },
+    effect(factory) {
+      const disposer = factory()
+      return typeof disposer === 'function' ? disposer : () => {}
+    },
+    on(event, listener) {
+      if (event === 'session/event') captured.listener = listener
+      return () => {}
+    },
+    webServer: {
+      register(route) {
+        captured.route = route
+        return () => {}
+      },
+    },
+  }
+
+  apply(ctx, {})
+  const server = http.createServer((req, res) => captured.route.handler(req, res))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const address = /** @type {{port: number}} */ (server.address())
+  t.after(() => new Promise((resolve) => {
+    server.closeAllConnections?.()
+    server.close(resolve)
+  }))
+  const base = `http://127.0.0.1:${address.port}/whale-catch/api`
+
+  const firstLoad = await fetch(`${base}/basket?session=session-cache`).then((r) => r.json())
+  assert.ok(firstLoad.value.files.some((file) => file.name === 'first.txt'), '首次打开要扫一次')
+
+  await fs.writeFile(path.join(cwd, 'second.txt'), 'two')
+  const polled = await fetch(`${base}/basket?session=session-cache`).then((r) => r.json())
+  assert.equal(
+    polled.value.files.some((file) => file.name === 'second.txt'),
+    false,
+    '5 秒轮询的 GET 不应该每次扫盘',
+  )
+
+  const refreshed = await fetch(`${base}/refresh`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'session-cache' }),
+  }).then((r) => r.json())
+  assert.ok(refreshed.value.files.some((file) => file.name === 'second.txt'), '手动刷新才重新扫盘')
+  assert.ok(refreshed.value.files.some((file) => file.name === 'first.txt'), '旧文件不能丢')
+})
+
+test('会话表按 LRU 淘汰：长期在用的早会话不会被挤掉', () => {
+  const cwd = path.join(os.tmpdir(), 'whale-lru')
+  const agents = new Map()
+  const ctx = {
+    get(service) {
+      if (service === 'agents') return { get: (id) => agents.get(id) }
+      return undefined
+    },
+  }
+  const store = createStore(ctx, normalizeConfig({}))
+  const touch = (id) => {
+    const agent = { session: { id, header: { cwd, createdAt: Date.now() - 60_000 } } }
+    agents.set(id, agent)
+    store.observe(agent.session, {
+      type: 'deliverables/presented',
+      data: { turn: 1, files: [{ path: 'x.txt' }] },
+    })
+  }
+
+  for (let i = 1; i <= 40; i += 1) touch(`s${i}`)
+  touch('s1') // 让最早创建的 s1 变成最近访问
+  touch('s41')
+
+  assert.ok(store.resolve('s1', path.join(cwd, 'x.txt')), '最近访问过的 s1 必须留下')
+  assert.equal(store.resolve('s2', path.join(cwd, 'x.txt')), undefined, '被淘汰的应该是最久未用的 s2')
+  store.dispose()
 })
