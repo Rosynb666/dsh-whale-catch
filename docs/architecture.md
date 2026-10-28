@@ -26,7 +26,7 @@
                      │                                                                             │
   GET /diff ────────►│ resolve(path)+resolveChange() 白名单 ──► workspaceChanges.diff(seq, index)   │
                      │                        └─ trimDiff() ──► hunks（1200 行预算）                 │
-  POST /zip ────────►│ resolve(path) 白名单 ──► buildZip() ──► Buffer                            │
+  POST /zip ────────►│ resolve(path) 白名单 ──► 读入内存 + sha256 ──► buildZip()（附清单）          │
   POST /archive ────►│ resolve(path) ──► copyFile 到 archiveDir/<sessionId>/…                     │
   GET  /file ───────►│ resolve(path) ──► createReadStream                                         │
                      └─────────────────────────────────────────────────────────────────────────────┘

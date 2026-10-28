@@ -80,6 +80,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 - **Diff** → expands the unified diff the kernel recorded for that change (`+` / `−` colouring, `@@` headers); binary and oversized files get a clear note instead.
 - **Group by turn** → sections per "Turn N", so you can see what each turn produced.
 - **Copy list** → copies the current list as Markdown (name, path, size, turn, line counts, description), ready for a report or an issue.
+- **Zip** → bundles `_whale-catch/manifest.json` plus a human-readable `交付清单.md` checklist (path, size, turn, line counts, sources, sha256), so the archive explains itself without the plugin.
 - **Select** → zip only the selected files; nothing selected means “zip everything”.
 - **Archive** → copies into the archive directory, preserving relative paths, never overwriting (adds ` (2)`); files outside the cwd go to `_external/`.
 - **Open** → opens the original file in a new tab (images / PDF / text inline, Office downloads).
@@ -140,7 +141,7 @@ These routes live on the loopback Host, so the threat model is *a third-party pa
 
 ```sh
 npm install
-npm test        # 49 tests: scan / merge / change metadata / zip format / HTTP fence / diff trim & timeout / client registration / plugin load
+npm test        # 50 tests: scan / merge / change metadata / zip format / HTTP fence / diff trim & timeout / client registration / plugin load
 npm run check   # contract self-check (package shape, patch, client.inject, meta, icon, deps)
 npm run verify  # both
 ```

@@ -91,6 +91,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 - **差异** → 对内核记录过的改动就地展开 unified diff（`+` / `−` 着色、加粗的 `@@` 段头），二进制与超大文件给明确提示
 - **按轮分组** → 按"第 N 轮"把文件分段，一眼看出每轮产出了什么
 - **复制清单** → 把当前列表导成 Markdown（文件名、路径、体积、轮次、行数、描述），贴进周报或 Issue 就能读
+- **打包** → zip 里附 `_whale-catch/manifest.json` 与 `交付清单.md`（相对路径、体积、轮次、行数、来源、sha256），不装插件也能看懂这一包是什么
 - **勾选** → 只打包选中的；一个都不选就是「全部打包」
 - **归档** → 复制到归档目录，保留相对路径，同名文件自动加 `(2)` 不覆盖；cwd 外的文件统一收进 `_external/`
 - **预览** → 新标签页打开原文件：图片 / PDF / 文本直接看，Office 走下载
@@ -152,7 +153,7 @@ dsh plugin --profile desktop remove dsh-whale-catch
 
 ```sh
 npm install
-npm test        # 49 项：扫描 / 合并 / 改动元数据 / zip 格式 / HTTP 栅栏 / 差异裁剪与超时 / client 注册 / 插件装载
+npm test        # 50 项：扫描 / 合并 / 改动元数据 / zip 格式 / HTTP 栅栏 / 差异裁剪与超时 / client 注册 / 插件装载
 npm run check   # 契约自检（包结构、patch、client.inject、meta、icon、依赖纪律…）
 npm run verify  # 两个都跑
 ```
