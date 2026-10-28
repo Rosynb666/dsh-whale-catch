@@ -31,4 +31,20 @@ jobs:
       - name: 契约自检
         run: npm run check
       - name: 单元与集成测试
-        run: npm test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-output.txt
+
+      # 日志接口对公开仓库也要 admin 权限；把失败摘要写进 job summary，
+      # 这样从 check-run API 也能看到具体是哪条测试挂了。
+      - name: 测试失败摘要
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo '### npm test failed'
+            echo '```'
+            tail -n 200 test-output.txt 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
