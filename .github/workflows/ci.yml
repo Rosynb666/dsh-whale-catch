@@ -31,4 +31,29 @@ jobs:
       - name: 契约自检
         run: npm run check
       - name: 单元与集成测试
-        run: npm test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-output.txt
+
+      # 日志接口对公开仓库也要 admin 权限；把失败摘要写进 job summary，
+      # 这样从 check-run API 也能看到具体是哪条测试挂了。
+      - name: 测试失败摘要
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo '### npm test failed'
+            echo '```'
+            tail -n 200 test-output.txt 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # 公开仓库的 Actions 日志接口仍要 admin；annotation 是公开可读的，
+      # 万一 summary 也看不到，至少能从 check-run annotations 取到末尾输出。
+      - name: 失败详情（annotation）
+        if: failure()
+        shell: bash
+        run: |
+          MSG="$(tail -n 120 test-output.txt 2>/dev/null | sed 's/%/%25/g; s/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+          echo "::error title=Windows test output::$MSG"
