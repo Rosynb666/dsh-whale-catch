@@ -111,7 +111,8 @@ test('第三方实现能正确读取（unzip / Python zipfile 可用时）', asy
       'import json, sys, zipfile',
       'z = zipfile.ZipFile(sys.argv[1])',
       'out = {"names": z.namelist(), "text": z.read("deep/鱼篓.txt").decode("utf-8")}',
-      'print(json.dumps(out, ensure_ascii=False))',
+      // 直接写 UTF-8 字节，绕开 Windows 控制台的 cp1252 编码。
+      'sys.stdout.buffer.write(json.dumps(out, ensure_ascii=False).encode("utf-8"))',
     ].join('\n')
     const { stdout } = await run('python3', ['-c', script, file])
     const parsed = JSON.parse(stdout)
