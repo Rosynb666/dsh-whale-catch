@@ -1,174 +1,379 @@
-# 🐋 深海鱼篓 · dsh-whale-catch
+<div align="center">
 
-> **不用登记。** 这次会话里产出的文件，自己游进鱼篓。
+# 🐋 深海鱼篓
 
-[English](https://github.com/Rosynb666/dsh-whale-catch/blob/main/README.en.md) | 中文
+### dsh-whale-catch · 让本场会话的交付物自己游进篮子
 
-给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的右侧栏插件：把一场会话里**产出或改动的文件**汇总到一个篮子里，预览、看差异、打包 zip、一键归档。
+**自动收集 · 一处预览 · 就地看差异 · 一键打包 / 归档**
 
-[![CI](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml/badge.svg)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml)
-[![Release](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml/badge.svg)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml)
-![license](https://img.shields.io/badge/license-MIT-blue)
-![DSH](https://img.shields.io/badge/DSH-%E2%89%A5%200.2.0--rc.2-4c8bf5)
-![node](https://img.shields.io/badge/node-%E2%89%A5%2022.19-3c873a)
-![deps](https://img.shields.io/badge/runtime%20deps-1%20(schemastery)-blue)
-![build](https://img.shields.io/badge/build%20step-none-brightgreen)
+[![CI](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/release.yml?style=flat-square&label=Release)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml)
+[![npm](https://img.shields.io/npm/v/dsh-whale-catch?style=flat-square&color=4c8bf5&label=npm)](https://www.npmjs.com/package/dsh-whale-catch)
+[![downloads](https://img.shields.io/npm/dw/dsh-whale-catch?style=flat-square&color=3c873a&label=downloads)](https://www.npmjs.com/package/dsh-whale-catch)
+[![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](https://github.com/Rosynb666/dsh-whale-catch/blob/main/LICENSE)
+[![node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-3c873a?style=flat-square)](#limits)
+[![DSH](https://img.shields.io/badge/DSH-%E2%89%A5%200.2.0--rc.2-4c8bf5?style=flat-square)](#limits)
+[![deps](https://img.shields.io/badge/runtime%20deps-1%20(schemastery)-blue?style=flat-square)](#dev)
+[![build](https://img.shields.io/badge/build%20step-none-brightgreen?style=flat-square)](#dev)
 
-![鱼篓面板预览](https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png)
+[🚀 快速开始](#install) · [✨ 功能地图](#features) · [⚙️ 配置](#config) · [🛡️ 安全模型](#security) · [English](https://github.com/Rosynb666/dsh-whale-catch/blob/main/README.en.md)
 
-> 上图是用 `lib/client.js` 里**真实的面板组件** + 示例数据在无头 Chrome 里渲染的静态预览（外面那圈深色栏框是预览页加的），不是 DSH 实机截图；实际配色跟随你的主题。
+</div>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="深海鱼篓面板预览" width="760">
+</p>
+
+<p align="center"><sub>🧪 用 <code>lib/client.js</code> 里真实的面板组件 + 示例数据渲染的静态预览，不是 DSH 实机截图；实际配色跟随你的主题。</sub></p>
+
+给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的右侧栏插件：把一场会话里**产出或改动过的文件**汇总到「鱼篓」里，支持预览、行内差异、搜索、按轮分组、打包 zip、归档与复制清单。
+
+## 🧭 目录
+
+- [🐋 为什么需要它](#why)
+- [✨ 功能地图](#features)
+- [🚀 30 秒上手](#install)
+- [🖥️ 界面与交互](#ui)
+- [🧠 零登记是怎么做到的](#how)
+- [⚙️ 配置](#config)
+- [🛡️ 安全模型](#security)
+- [📊 兼容性与已知限制](#limits)
+- [🛠️ 开发与测试](#dev)
+- [🗺️ 路线图](#roadmap)
+- [🤝 参与与致谢](#contributing)
 
 ---
 
-## 它解决什么
+<a id="why"></a>
 
-在 DSH 里干活，"文件生成完就找不到了"几乎是日常：
+## 🐋 为什么需要它
 
-- 内核的**产出物卡片**只在当前这一轮出现，往下翻几屏就散了；
-- 我在 `bash` 里跑 `python build_doc.py` 写出来的 docx / pdf，既不算"文件工具改动"，也没调 `present`，两套机制都不认；
-- 攒了十几个交付物想一次发给别人，只能回目录里翻，还要担心漏掉。
+在 DSH 里连续干上几轮活之后，「文件到底产出到哪了」几乎是日常问题：
 
-鱼篓只做三件事：**自动收**、**一处看**、**一键打包/归档**；改过的文件还能就地展开差异，不用回 git 里翻。
+- 🪟 内核的**产出物卡片**只在当前这一轮出现，往下翻几屏就散了；
+- 🐚 在 `bash` 里跑 `python build_doc.py`、`npm run build` 写出来的 docx / pdf / zip，既不算「文件工具改动」，也没调 `present`，两套机制都不认；
+- 📦 攒了十几个交付物想一次发给别人，只能回目录里翻，还要担心漏掉；
+- 🔍 改过的文件想看看「改了多少、改了什么」，得切回 git 或翻历史。
 
-## 和内核产出物的区别
+鱼篓只做三件事：**自动收**、**一处看**、**一键打包 / 归档**。改过的文件还能就地展开 unified diff，搜索、按轮分组、复制 Markdown 清单也都在同一个侧栏里完成。
 
-先说清楚，这不是重复造轮子——内核的 `deliverables/presented` 与 `workspace/changes` 我照单全收，只是它们各自覆盖不到的场景，鱼篓补上：
+> 💡 **一句话：** 不改变你的工作流，只给「这一场会话到底产出了什么」一个常驻的答案。
 
-| | 内核产出物卡片 | 鲸鱼鱼篓 |
+## 🆚 和内核产出物的区别
+
+这不是重复造轮子——内核的 `deliverables/presented` 与 `workspace/changes` 鱼篓照单全收，只是把它们覆盖不到的场景补上：
+
+| | 🪟 内核产出物卡片 | 🧺 鲸鱼鱼篓 |
 |---|---|---|
-| 来源 | `present` 声明 + git / 文件工具改动 | 同样两条，**再加目录扫描兜底**（bash、python、构建脚本的产物） |
-| 范围 | 单轮，轮末出现 | 整场会话，跨轮聚合 |
-| 改动详情 | 轮末卡片里显示一次 | 行数徽章常驻，点开就地看 unified diff，还能按轮分组 |
-| 能做什么 | 打开源文件 | 预览 / 看差异 / 打包 zip / 归档到指定目录 / 复制路径 / 复制 Markdown 清单 |
-| Host 重启后 | 改动摘要活在内存里，重启即失 | 靠 mtime 重建（`present` 的描述会丢，见[已知限制](#已知限制)） |
-| 要不要 agent 配合 | 要模型记得调 `present` | **不要**，零登记 |
+| **来源** | `present` 声明 + git / 文件工具改动 | 同样两条，**再加目录扫描兜底**（bash、python、构建脚本的产物） |
+| **范围** | 单轮，轮末出现 | **整场会话**，跨轮聚合 |
+| **改动详情** | 轮末卡片里显示一次 | 行数徽章常驻，点开就地看 unified diff，还能按轮分组 |
+| **能做什么** | 打开源文件 | 预览 / 看差异 / 搜索 / 打包 zip / 归档 / 复制路径 / 复制 Markdown 清单 |
+| **Host 重启后** | 改动摘要活在内存里，重启即失 | 靠 mtime 重建文件列表（`present` 描述会丢，见[已知限制](#limits)） |
+| **要 agent 配合** | 要模型记得调 `present` | **不要**，零登记 |
+| **交付物边界** | 内核认为的「产出」 | 额外兜住「外部进程写进 cwd 的文件」 |
 
-## 安装
+<a id="features"></a>
 
-要求：DSH `>= 0.2.0-rc.2`，Node `^22.19 || >=24`（Desktop 自带运行时已满足）。
+## ✨ 功能地图
+
+| 能力 | 你会看到什么 |
+|---|---|
+| 🧺 **自动收集** | `present` 声明、`workspace/changes` 改动、cwd 目录扫描三条来源合并；同一个绝对路径取并集 |
+| 👀 **就地预览** | 图片 / PDF / 文本 / 常见源码在新标签页直接看；HTML / SVG 在 CSP 沙箱里渲染；Office 走下载 |
+| 🔍 **行内差异** | 对内核记录过的改动展开 unified diff：`+` / `−` 着色、`@@` 段头、新增 / 删除 / binary / oversized 提示 |
+| 🧭 **搜索与分组** | 按文件名 / 路径 / 描述搜索；按分类 chip 过滤；按「第 N 轮」分组；复制 Markdown 清单 |
+| 📦 **打包 zip** | 只打选中项或全部；包内附 `manifest.json` + `交付清单.md`；cwd 外文件统一 `_external/` |
+| 🗂️ **一键归档** | 复制到归档目录，保留相对路径；同名自动 `(2)`；失败逐条回传，不假装成功 |
+| 📊 **改动徽章** | 每个文件常驻 `+N −M` 行数；头部汇总本场会话的增删行 |
+| 🌗 **跟随主题** | 只用 `--dsw-alias-*` / `--dsw-static-*` 主题 token，深色 / 浅色自动适配 |
+| 🌐 **中英双语** | 面板字典中英对齐；错误码有本地化文案 |
+| ⚡ **零构建** | `lib/client.js` 原样交给 `__ModuleLoader__`，没有打包步骤 |
+
+### 🎁 0.2.2 亮点
+
+- 🛑 **面板轮询不再扫盘**：5 秒轮询只读缓存，首次打开、`turn/end`、手动刷新才扫描。
+- 🌊 **zip 流式写入**：逐文件读取、异步压缩、边压边发，不再把整包攒进内存。
+- 🎯 **Range / ETag**：PDF、大文件预览可拖动进度，不用重拉整份。
+- 🛡️ **Host 白名单**：堵住 DNS rebinding 下「Origin 与 Host 同时是攻击者域名」的绕过。
+- 🧹 **归档安全**：拒绝 `archiveDir == cwd`，`realpath` 挡住符号链接穿越，失败进 `failed`。
+- 🔎 **面板搜索**：按名称 / 路径 / 描述过滤，和分类 chip 一起生效。
+
+<a id="install"></a>
+
+## 🚀 30 秒上手
+
+> **环境要求**
+> - DSH `>= 0.2.0-rc.2`
+> - Node `^22.19 || >=24`（Desktop 自带运行时已满足）
+> - 无需构建、无需额外服务、无需配置数据库
+
+### 1. 安装
 
 ```sh
 # 从 GitHub 安装
 dsh plugin --profile desktop add github:Rosynb666/dsh-whale-catch
 
-# 从 npm 安装
+# 从 npm 安装（推荐）
 dsh plugin --profile desktop add dsh-whale-catch
 
 # 本地开发：直接用目录
 dsh plugin --profile desktop add /绝对路径/dsh-whale-catch
 ```
 
-刷新页面（⌘R），右侧栏点 `+`，在引导页里选 **「打开深海鱼篓」**，或直接点侧栏里的鱼篓图标。
+### 2. 打开面板
 
-卸载：
+刷新页面（⌘R / Ctrl+R），右侧栏点 `+`，在引导页里选 **「打开深海鱼篓」**；也可以直接点侧栏里的 🐋 图标。
+
+### 3. 开始干活
+
+让 agent 随便做点产出，或手动点一次「刷新」，文件就会出现在鱼篓里。勾选文件 → 「打包 zip」或「归档」。
+
+### 卸载
 
 ```sh
 dsh plugin --profile desktop remove dsh-whale-catch
 ```
 
-## 界面
+---
 
-右侧栏里的鱼篓（窄栏布局，随主题 token 变色）：
+<a id="ui"></a>
+
+## 🖥️ 界面与交互
+
+窄栏布局，下面是一张示意（实际宽度随侧栏变化）：
 
 ```text
-┌──────────────────────────────────────┐
-│ 🐋 鱼篓            12 条鱼 · 3.4 MB  [刷新] │
+┌──────────────────────────────────────────────┐
+│ 🐋 鱼篓              12 条鱼 · 3.4 MB  [刷新] │
 │ [全部 12] [📄 文档 7] [📊 表格 3] [🖼 图片 2] │
-├──────────────────────────────────────┤
-│ ☑ 📄 项目周报.docx              +12 −3  │
-│    第三季度周报 · 周报.docx   [预览] [差异] ⧉ │
-│    1.2 MB · 3 分钟前 · 交付 · 改动         │
-│ ☐ 📊 预算表-2026.xlsx                  │
-│    plan.xlsx · 88 KB · 12 分钟前         │
-│ ☐ 🖼 产品手册.pdf                      │
-│    ...                                   │
-├──────────────────────────────────────┤
-│ 已选 2 项                  [归档] [打包 zip] │
-│ 扫描于 刚刚                               │
-└──────────────────────────────────────┘
+│ [🔎 搜索文件名、路径或描述…                  ] │
+├──────────────────────────────────────────────┤
+│ ☑ 📄 项目周报.docx                   +12 −3  │
+│    第三季度周报 · 周报.docx    [预览] [差异] ⧉ │
+│    1.2 MB · 3 分钟前 · 交付 · 改动            │
+│ ☐ 📊 预算表-2026.xlsx                         │
+│    plan.xlsx · 88 KB · 12 分钟前              │
+│ ☐ 🖼 产品手册.pdf                             │
+│    ...                                        │
+├──────────────────────────────────────────────┤
+│ 已选 2 项                    [归档] [打包 zip] │
+│ 扫描于 刚刚                                   │
+└──────────────────────────────────────────────┘
 ```
 
-- **差异** → 对内核记录过的改动就地展开 unified diff（`+` / `−` 着色、加粗的 `@@` 段头），二进制与超大文件给明确提示
-- **按轮分组** → 按"第 N 轮"把文件分段，一眼看出每轮产出了什么
-- **复制清单** → 把当前列表导成 Markdown（文件名、路径、体积、轮次、行数、描述），贴进周报或 Issue 就能读
-- **搜索** → 按文件名、路径或描述过滤当前列表，和分类 chip 一起生效
-- **打包** → zip 里附 `_whale-catch/manifest.json` 与 `交付清单.md`（相对路径、体积、轮次、行数、来源、sha256），不装插件也能看懂这一包是什么
-- **勾选** → 只打包选中的；一个都不选就是「全部打包」
-- **归档** → 复制到归档目录，保留相对路径，同名文件自动加 `(2)` 不覆盖；cwd 外的文件统一收进 `_external/`
-- **预览** → 新标签页打开原文件：图片 / PDF / 文本直接看，Office 走下载
-- **⧉** → 复制绝对路径（贴给别的工具最省事）
+### 🎛️ 控件速查
 
-## 它是怎么"零登记"的
+| 控件 | 作用 |
+|---|---|
+| ☑️ **复选框 / 行点击** | 勾选文件；只打包 / 归档选中的，一个都不选就是全部 |
+| 🔄 **刷新** | 强制重扫当前会话 cwd，并拉最新快照 |
+| 🏷️ **分类 chip** | 全部 / 文档 / 表格 / 演示 / 图片 / 代码 / 压缩 / 音视频 / 其他 |
+| 🔎 **搜索框** | 文件名、相对路径、描述的 case-insensitive 子串匹配 |
+| 🔀 **按轮分组** | 按「第 N 轮」分段，轮次倒序，没标轮次的沉底 |
+| 📋 **复制清单** | 当前勾选（没有勾选时用当前筛选）导出 Markdown，贴周报 / Issue |
+| ⧉ **复制路径** | 复制绝对路径，贴给别的工具最省事 |
+| 👁️ **预览** | 新标签页打开原文件；图片 / PDF / 文本 / 源码内联，Office 下载 |
+| 🧾 **差异** | 就地展开内核留下的 unified diff；只有带 `workspace/changes` 记录的条目才有 |
+| 📦 **打包 zip** | 生成带交付清单的 zip，直接下载 |
+| 🗂️ **归档** | 复制到配置的归档目录，失败会显示「成功 N / 失败 M」 |
 
-三条来源合并，同一个绝对路径取并集：
+### 📦 打包后的 zip 长这样
+
+```text
+季度交付.zip
+├── 项目周报.docx
+├── assets/
+│   └── chart.png
+├── _external/
+│   └── 外部交付.pdf
+└── _whale-catch/
+    ├── manifest.json       # 机器可读：会话、包内路径、体积、轮次、sha256…
+    └── 交付清单.md          # 人可读：Markdown 表格
+```
+
+### 🗂️ 归档后的目录长这样
+
+```text
+$DSH_HOME/whale-catch/archive/
+└── <session-id>/
+    ├── 项目周报.docx
+    ├── assets/chart.png
+    └── _external/外部交付.pdf
+```
+
+<a id="how"></a>
+
+## 🧠 零登记是怎么做到的
+
+鱼篓不要求 agent 调工具登记文件。它把三条来源按**绝对路径**合并：
 
 | 来源 | 从哪来 | 覆盖什么 |
 |---|---|---|
-| `presented` | 内核会话事件 `deliverables/presented` | 模型显式交付的文件，带描述与轮次 |
-| `changed` | 内核会话事件 `workspace/changes` + `ctx.workspaceChanges.summary()` / `.diff()` | git 快照与文件工具改动，带行数与 unified diff |
-| `scanned` | 会话工作目录扫描（mtime ≥ 会话创建时间） | bash / python / 构建脚本写出的文件 |
+| `presented` | 内核事件 `deliverables/presented` | 模型显式交付的文件，带描述与轮次 |
+| `changed` | 内核事件 `workspace/changes` + `ctx.workspaceChanges.summary()` / `.diff()` | git 快照与文件工具改动，带行数与 unified diff |
+| `scanned` | 会话 cwd 扫描（`mtime >= 会话创建时间`） | bash / python / 构建脚本写出的文件 |
 
-扫描有边界：只在会话 cwd 内、不跟符号链接、跳过 `node_modules` / `.git` / 点开头的文件与目录、受深度 / 数量 / 体积上限约束。细节见 [docs/architecture.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/docs/architecture.md)。
+```text
+session/event
+ ├─ deliverables/presented ──────────────┐
+ ├─ workspace/changes ───────────────────┤
+ └─ turn/end ──► scan cwd ───────────────┤
+                                        ▼
+                             Basket（按绝对路径合并）
+                                        │
+                         GET /basket ───┴──► 右侧栏面板
+```
 
-面板每 5 秒的轮询只读 Host 里的缓存快照，**不会每轮重扫磁盘**；真正触发扫描的是首次打开、每轮 `turn/end` 的延迟扫描，以及手动「刷新」。
+### 🧭 扫描边界
 
-## 配置
+- 只在**当前会话 cwd** 内，不越界、不跟符号链接；
+- 跳过 `node_modules` / `.git` 等默认目录；
+- 跳过**点开头的文件与目录**（`.env`、`.gitignore` 不会自动进筐；需要交付请用 `present`）；
+- `maxDepth`（默认 6）、`maxFiles`（默认 800）、`maxFileBytes`（默认 64 MB）、访问目录项上限 20000；
+- 超限会标记 `truncated`，面板会提示「目录太大」。
 
-用自己的 profile 补丁层覆盖，**不要**改包里的 `cordis.patch.yml`（升级会被覆盖）：
+### ⏱️ 什么时候扫描
+
+| 触发 | 行为 |
+|---|---|
+| 首次打开面板 | 扫一次 |
+| 每轮 `turn/end` | 延迟 1.2 秒扫一次（给写盘留时间） |
+| 手动「刷新」 | 强制重扫；若后台扫描在跑，先等它结束 |
+| 5 秒轮询 | **只读缓存**，不扫盘 |
+
+会话表按 **LRU** 保留最近 40 个会话；快照里的文件 stat 用 16 路并发限流。
+
+<a id="config"></a>
+
+## ⚙️ 配置
+
+配置写在你自己的 profile 补丁层里，**不要**改包里的 `cordis.patch.yml`（升级会被覆盖）：
 
 ```yaml
 # ~/.dsh/profiles/desktop/cordis.patch.yml
 - id: dsh-whale-catch
   config:
-    archiveDir: ~/Documents/鱼篓归档          # 缺省 $DSH_HOME/whale-catch/archive；~ 会展开
-    ignore: [dist, build, .venv]               # 额外忽略的目录名
-    maxFiles: 800                              # 最多收录多少个文件
-    maxDepth: 6                                # 目录遍历深度
-    maxFileBytes: 67108864                     # 单文件上限 64 MB
-    maxZipBytes: 536870912                     # 打包总量上限 512 MB
-    maxBodyBytes: 1048576                      # 请求体上限 1 MB
-    lookbackMinutes: 720                       # 拿不到会话创建时间时往回看 12 小时
-    allowHosts: []                             # 额外放行的 Host 名；默认只认 localhost / IP 字面量
+    archiveDir: ~/Documents/鱼篓归档   # 归档目录；默认 $DSH_HOME/whale-catch/archive
+    ignore: [dist, build, .venv]        # 额外忽略的目录名
+    maxFiles: 800                       # 最多收录多少个文件
+    maxDepth: 6                         # 目录遍历深度
+    maxFileBytes: 67108864              # 单文件上限 64 MB
+    maxZipBytes: 536870912              # 打包总量上限 512 MB
+    maxBodyBytes: 1048576               # 请求体上限 1 MB
+    lookbackMinutes: 720                # 拿不到会话创建时间时往回看 12 小时
+    allowHosts: []                      # 额外放行的 Host 名；默认只认 localhost / IP 字面量
 ```
+
+| 字段 | 默认值 | 说明 |
+|---|---|---|
+| `archiveDir` | `$DSH_HOME/whale-catch/archive` | 归档根目录；开头的 `~` / `~/` 会展开 |
+| `ignore` | `[]` | 额外跳过的目录名，叠加在内置黑名单上 |
+| `maxFiles` | `800` | 单次扫描最多收录多少个文件 |
+| `maxDepth` | `6` | 目录遍历深度 |
+| `maxFileBytes` | `67108864` | 单文件上限；zip 与归档共用 |
+| `maxZipBytes` | `536870912` | 打包总量上限；也用于 zip 预检 |
+| `maxBodyBytes` | `1048576` | JSON 请求体上限 |
+| `lookbackMinutes` | `720` | 拿不到会话创建时间时，往回看多少分钟 |
+| `allowHosts` | `[]` | 额外放行的 Host 名（反代域名等）；IP 字面量与 `localhost` 总是允许 |
 
 改完热重载即生效，无需重启。
 
-## 安全边界
+<a id="security"></a>
 
-这些接口跑在本机 `127.0.0.1` 的 Host 上，所以按"浏览器里的第三方页面会来打"来设防：
+## 🛡️ 安全模型
 
-- **路径白名单**：`/file`、`/diff`、`/zip`、`/archive` 只接受**已经进筐**的路径（Host 内存里的登记表），没有任意文件读取面；`../` 穿越在登记表这一层就被挡掉。`/diff` 还多一道：只对带 `workspace/changes` 记录的条目开放。
-- **同源栅栏**：带 `Origin` 且 Host 对不上的请求一律 403；`Sec-Fetch-Site: cross-site` 同样拒绝。Host 本身还必须是 `localhost`、IP 字面量或 `allowHosts` 里的名字——DNS rebinding 下攻击者只能用域名，这一步会把「Origin 和 Host 同时是 evil.example」的绕过挡掉。
-- **写操作必须 `application/json`**：跨站表单发不出这个 content-type，声明了它会触发预检，而预检打到本路由直接被 415 挡掉。
-- **内联预览加沙箱**：HTML / SVG 内联出去会继承 Host 源，所以这两类响应带 `Content-Security-Policy: sandbox`——文档照常渲染，脚本不执行、源变 opaque，没法反过来调本机接口。
-- **打包与归档的额外校验**：zip 条目名去掉上跳段与前导斜杠；归档写入前用 `realpath` 再确认父目录仍在归档根内（不跟随符号链接），并拒绝「归档目录 == cwd」的配置；cwd 之外的文件在 zip 与归档里都收进 `_external/`，不镜像绝对路径，重名自动加 `(2)`。
-- **归档失败不静默**：超过单文件上限、路径不安全或复制失败的文件会进响应里的 `failed`，面板显示「成功 N / 失败 M」，不会再假装全部成功。
-- **预览支持 Range**：`/file` 回 `Accept-Ranges`、`ETag` 与单段 `Range`（206/416），PDF 和大文件拖动进度条不用重拉整份；客户端断开时读取流会被销毁。
-- **硬上限**：单文件 64 MB、打包总量 512 MB、最多 800 个文件、请求体 1 MB，均可在配置里改。超限文件会被跳过，并通过 `X-Whale-Catch-Skipped` 告诉面板跳了几条。
+接口跑在本机 loopback 上，所以按「浏览器里的第三方页面会来打本机接口」来设防，而不是「本机其它进程」（它们本来就能读你的文件）。
 
-## 已知限制
+| 防线 | 做什么 |
+|---|---|
+| 🚧 **路径白名单** | `/file`、`/diff`、`/zip`、`/archive` 只接受已在鱼篓登记表里的路径；`../` 在入口就被挡掉 |
+| 🌐 **同源 + Host** | `Origin` 必须与 `Host` 一致；`Sec-Fetch-Site: cross-site` 拒绝；Host 必须是 `localhost`、IP 字面量或 `allowHosts` 值 |
+| 🧾 **JSON 写操作** | 跨站表单发不出 `application/json`；声明它会触发预检，预检被 415 挡掉 |
+| 🧪 **内联沙箱** | HTML / SVG 响应带 `Content-Security-Policy: sandbox`：能渲染样式，脚本不执行、源变 opaque |
+| 📦 **zip 校验** | 条目名去掉 `..` 与前导斜杠；清单名预留防撞；cwd 外文件统一 `_external/` |
+| 🗂️ **归档校验** | `realpath` 确认父目录仍在归档根内，符号链接穿越记 `unsafe-path`；拒绝 `archiveDir == cwd` |
+| 📏 **硬上限** | 单文件 64 MB、打包总量 512 MB、800 个文件、请求体 1 MB，均可配置 |
+| 🚫 **失败不静默** | 超限 / 不安全 / 复制失败会进 `failed`，面板显示成功与失败数 |
 
-- 只覆盖**当前会话的工作目录**。跨会话、cwd 之外的文件不进筐（`present` 声明的绝对路径除外）。
-- Host 重启后，`present` 的描述与轮次号不会恢复；文件本身会靠 mtime 重新出现。
-- mtime 早于会话创建时间的文件不会进筐——"从别处复制进来但保留了旧时间戳"就属于这种。
-- **差异只在 Host 存活期间可看**：`workspace-changes` 把对比留在内存里，重启后旧轮次只剩文件名，面板会提示"没有可读的差异"。
-- 差异来自内核的 `workspaceChanges.diff()`；宿主版本没有这个能力时，面板同样只给提示，其余功能不受影响。
-- `/diff` 一次最多回传 1200 行，面板每条 hunk 最多铺 300 行——长 diff 会被截断并标注。
-- 归档目录默认在 `$DSH_HOME` 下，不会自动同步到网盘；也没有自动清理策略，长期使用请自己定期整理。
-- 扫描会跳过所有点开头的文件（`.env`、`.gitignore` 等），这是为了不把密钥类文件自动收进筐；如果确实需要交付 dotfile，请用 `present` 显式声明。
-- zip 里的 `_whale-catch/manifest.json` 与 `交付清单.md` 会写入 cwd（用户主目录前缀会脱敏成 `~`）、会话 id 与 sha256。把 zip 发给别人前，留意这些信息。
-- 预览走浏览器原生能力：PDF / 图片 / 文本 / 常见源码（`.py`、`.ts`、`.yml` 等）能直接看，HTML / SVG 在沙箱里渲染（样式还在，脚本不执行），docx / xlsx 会触发下载（DSH 自带的文档预览更合适，欢迎 PR）。
+> **隐私提示**
+> - zip 的 `_whale-catch/manifest.json` 与 `交付清单.md` 会记录 cwd（用户主目录前缀脱敏为 `~`）、会话 id 与 sha256；分享前留意。
+> - 扫描有意跳过点文件，避免把 `.env`、`.gitignore` 自动收进筐。
+> - 安全问题请走私密渠道：[SECURITY.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/SECURITY.md)。
 
-## 开发
+<a id="limits"></a>
+
+## 📊 兼容性与已知限制
+
+### ✅ 兼容性
+
+| 项目 | 支持范围 |
+|---|---|
+| DSH | `>= 0.2.0-rc.2` |
+| Node | `^22.19 || >=24` |
+| 平台 | macOS / Windows / Linux（CI 三平台 × Node 22/24） |
+| 构建 | 无；`lib/client.js` 原样加载 |
+| 运行时依赖 | `@deepseek-ai/schemastery`（纯校验库） |
+
+### ⚠️ 已知限制
+
+| 限制 | 影响 / 说明 |
+|---|---|
+| 只覆盖当前会话 cwd | cwd 外文件不进筐，`present` 声明的绝对路径除外 |
+| Host 重启 | `present` 描述与轮次号不恢复；文件靠 mtime 重新出现 |
+| mtime 早于会话创建 | 「复制进来但保留旧时间戳」的文件不会进筐 |
+| 差异只在 Host 存活期间可看 | `workspace-changes` 把对比留在内存，重启后只剩文件名 |
+| 差异依赖内核能力 | 宿主没有 `workspaceChanges.diff()` 时面板只给提示 |
+| 长 diff 截断 | `/diff` 最多 1200 行，面板每条 hunk 最多铺 300 行 |
+| 归档不自动清理 | 默认在 `$DSH_HOME` 下，不自动同步网盘；请自行整理 |
+| 预览受浏览器能力限制 | PDF / 图片 / 文本 / 常见源码内联；HTML/SVG 沙箱；docx/xlsx 下载 |
+| 大列表无虚拟滚动 | 一次渲染全部行；搜索是子串匹配，没有排序 |
+| 点文件不自动收集 | `.env` 等需要 `present` 显式声明 |
+
+### ❓ 常见问题
+
+<details>
+<summary><b>面板打开了但一直是空的？</b></summary>
+
+先确认会话有没有 cwd、有没有在本轮结束后点一次「刷新」。文件 mtime 不能早于会话创建时间；`.env` 这类点文件默认不扫。还不行就看 Host 日志里有没有 `no-cwd` / `scan` 相关报错。
+</details>
+
+<details>
+<summary><b>为什么「差异」按钮不出现？</b></summary>
+
+只有带 `workspace/changes` 记录的文件才有前后对比。扫描进来的文件、单纯 `present` 的文件没有快照，按钮不会出现；Host 重启后旧轮次的对比也会失效。
+</details>
+
+<details>
+<summary><b>为什么 docx / xlsx 点预览变成下载？</b></summary>
+
+浏览器原生不渲染 Office。鱼篓按附件返回，交给系统应用打开；DSH 自带的文档预览更适合这类文件，欢迎 PR 接入。
+</details>
+
+<details>
+<summary><b>安装时 npm 报 EPERM / 缓存权限错误？</b></summary>
+
+常见于受限环境把 `~/.npm` 缓存挡在写权限之外。换一个可写缓存即可，不用 sudo：
+
+```sh
+npm pack --dry-run --cache="$(mktemp -d)"
+```
+</details>
+
+<a id="dev"></a>
+
+## 🛠️ 开发与测试
 
 ```sh
 npm install
-npm test        # 60 项：扫描 / 合并 / 改动元数据 / zip 流式写入 / Range / HTTP 栅栏 / 差异裁剪与超时 / client 注册 / 插件装载
-npm run check   # 契约自检（包结构、patch、client.inject、meta、icon、依赖纪律…）
-npm run verify  # 两个都跑
+npm test        # 60 项：扫描 / 合并 / 改动元数据 / 流式 zip / Range / HTTP 栅栏 / 差异裁剪 / 插件装载
+npm run check   # 契约自检：包结构、patch、client.inject、locale meta、icon、依赖纪律
+npm run verify  # check + test
 ```
 
-**没有构建步骤**：`lib/index.js` 是 Host 半边，`lib/client.js` 是原样交给 `__ModuleLoader__` 的浏览器半边，改完直接重装即可。运行时依赖只有 `@deepseek-ai/schemastery`（纯校验库）——它必须是 `dependencies` 而不是 peer：profile 的 pnpm 配置是 `autoInstallPeers: false`，放 peer 在干净 profile 里根本装不上，Host 半边会在加载时直接失败。
+**没有构建步骤**：`lib/index.js` 是 Host 半边，`lib/client.js` 是原样交给 `__ModuleLoader__` 的浏览器半边，改完直接重装即可。
+
+**依赖纪律**：运行时依赖只有 `@deepseek-ai/schemastery`（纯校验库）。它必须是 `dependencies` 而不是 peer——profile 的 pnpm 配置是 `autoInstallPeers: false`，放 peer 在干净 profile 里根本装不上，Host 半边会在加载时直接失败。
 
 ```text
 dsh-whale-catch/
@@ -176,20 +381,45 @@ dsh-whale-catch/
 │   ├── index.js      # 插件入口：会话事件 → 鱼篓登记表，注册 HTTP 路由
 │   ├── basket.js     # 三来源合并、改动元数据、快照、路径准入（白名单）
 │   ├── scan.js       # 带边界的工作区扫描
-│   ├── zip.js        # 零依赖 ZIP 写入器（STORE + DEFLATE）
-│   ├── routes.js     # HTTP 接口（含差异裁剪与超时）
-│   ├── http.js       # 同源栅栏、JSON 收发、MIME
+│   ├── zip.js        # 零依赖 ZIP 写入器（流式 STORE + DEFLATE）
+│   ├── routes.js     # HTTP 接口：预览 / 差异 / zip / archive
+│   ├── http.js       # 同源 + Host 栅栏、JSON 收发、MIME、Range
 │   └── client.js     # 右侧栏 tab + 面板（纯 JS，零构建）
 ├── locale/           # 市场与设置页展示用的元数据
 ├── test/             # node:test，无测试框架依赖
-└── scripts/          # 契约自检
+├── scripts/          # 契约自检
+└── docs/             # 架构、发布清单、开发手册
 ```
 
-架构与不变量：[docs/architecture.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/docs/architecture.md) ·
-发布清单：[docs/publish.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/docs/publish.md) ·
-参与开发：[CONTRIBUTING.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/CONTRIBUTING.md) ·
-安全报告：[SECURITY.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/SECURITY.md)
+- 🏗️ 架构与不变量：[docs/architecture.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/docs/architecture.md)
+- 🚢 发布清单：[docs/publish.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/docs/publish.md)
+- 🤝 参与开发：[CONTRIBUTING.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/CONTRIBUTING.md)
+- 🛡️ 安全报告：[SECURITY.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/SECURITY.md)
 
-## 许可
+<a id="roadmap"></a>
 
-[MIT](https://github.com/Rosynb666/dsh-whale-catch/blob/main/LICENSE)
+## 🗺️ 路线图
+
+- 🌉 跨会话视图：把所有会话的产物汇总成一个总台账。
+- 💾 持久化 `present` 描述与轮次，Host 重启后仍可读。
+- 📄 接入 DSH 的 Document Preview，Office 文档不再只能下载。
+- 🧹 归档清理策略（按日期 / 按项目 / 保留 N 份）。
+- ⚡ 大列表虚拟滚动与排序。
+- 🧪 客户端 Panel 的真实渲染测试、`tsc --checkJs` / lint。
+
+<a id="contributing"></a>
+
+## 🤝 参与与致谢
+
+- 有 bug / 需求：走 [Issue 模板](https://github.com/Rosynb666/dsh-whale-catch/issues/new/choose)。
+- 想改代码：先看 [CONTRIBUTING.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/CONTRIBUTING.md)。
+- 安全问题：不要公开提 issue，走 [SECURITY.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/SECURITY.md)。
+
+感谢每一位愿意把「文件生成完就找不到」这个痛点讲出来的人，也感谢 DSH 社区里那些把插件边界踩清楚的前辈。
+
+> 🐋 **深海鱼篓** 用爱、米饭和一点点强迫症维护。
+> 如果它帮你省下过一次翻目录的时间，点个 ⭐ 就是最好的投喂。
+
+## 📄 许可
+
+[MIT](https://github.com/Rosynb666/dsh-whale-catch/blob/main/LICENSE) © Rosynb666
