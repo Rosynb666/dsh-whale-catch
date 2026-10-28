@@ -99,7 +99,9 @@ test('第三方实现能正确读取（unzip / Python zipfile 可用时）', asy
 
   // 1) Info-ZIP 的完整性检查：只验 CRC 与目录结构，不验中文名落盘
   const hasUnzip = await run('unzip', ['-v']).then(() => true, () => false)
-  if (hasUnzip) await run('unzip', ['-t', file])
+  // Windows 上的 unzip 常来自 Git for Windows，对 UTF-8 条目名的行为不稳定；
+  // 中文名与内容交给 Python zipfile 交叉验证。
+  if (hasUnzip && process.platform !== 'win32') await run('unzip', ['-t', file])
 
   // 2) Python 的 zipfile 尊重 UTF-8 位标记，用它交叉验证条目名与内容。
   //    （macOS 自带的老 unzip 会把 UTF-8 名按 OEM 码页落盘，不能拿来验中文名）
@@ -109,7 +111,8 @@ test('第三方实现能正确读取（unzip / Python zipfile 可用时）', asy
       'import json, sys, zipfile',
       'z = zipfile.ZipFile(sys.argv[1])',
       'out = {"names": z.namelist(), "text": z.read("deep/鱼篓.txt").decode("utf-8")}',
-      'print(json.dumps(out, ensure_ascii=False))',
+      // 直接写 UTF-8 字节，绕开 Windows 控制台的 cp1252 编码。
+      'sys.stdout.buffer.write(json.dumps(out, ensure_ascii=False).encode("utf-8"))',
     ].join('\n')
     const { stdout } = await run('python3', ['-c', script, file])
     const parsed = JSON.parse(stdout)

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔐 安全漏洞（私密）
+    url: https://github.com/Rosynb666/dsh-whale-catch/security/advisories/new
+    about: 不要公开提交可利用细节，走 GitHub Security Advisory。
+  - name: 📖 使用问题 / 已知限制
+    url: https://github.com/Rosynb666/dsh-whale-catch#limits
+    about: 提交 issue 前先看 README 的 FAQ 与已知限制。
