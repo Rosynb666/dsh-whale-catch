@@ -56,17 +56,28 @@
 
 所以 `/diff` 只是一层**准入 + 转发 + 裁剪**：路径必须在鱼篓里、条目必须有 `seq + index`，然后原样调 `ctx.workspaceChanges.diff()`；Host 版本没有这个能力就回 `no-diff`，面板降级成一句提示。行数徽章同理——`added` / `deleted` 是内核算好的，不重算。
 
-## 为什么原生预览地址由 Host 生成
+## 为什么预览统一交给 Document Preview
 
-0.3.0 让 Office 文档能直接在右侧栏看，但鱼篓自己**不写渲染器**：内核的 Document Preview 早就能把 docx / xlsx / pptx 经 `officeToPdf` 转成 PDF，面板只需要把文件"指"给它。指向的方式是 `dsh-resource://file/session/<sessionId>/<相对路径>` 地址，然后调 `ctx.sidebarRight.openResource()`。
+0.3.0 只把 Office 文档指给内核的 Document Preview；0.3.2 把所有预览都收了过去。触发点是 Desktop 的 Electron 主进程：
+
+```js
+view.webContents.setWindowOpenHandler(({ url }) => {
+  if (new URL(url).protocol === 'https:') shell.openExternal(url)
+  return { action: 'deny' }
+})
+```
+
+它对**所有** `window.open` 返回 deny，只把 `https:` 外链交给系统浏览器。鱼篓原来用 `window.open` 打开本机 `/file` 地址（`http:`），于是被静默拦掉——用户看到的就是「点预览没反应」。md、patch、图片、PDF 全都一样，与文件类型无关。
+
+修法不是绕过 deny，而是根本不新开窗口：内核的 Document Preview 本来就支持图片 / PDF / Markdown / 文本 / 源码 / Office，面板只需要把文件"指"给它。指向的方式是 `dsh-resource://file/session/<sessionId>/<相对路径>` 地址，然后调 `ctx.sidebarRight.openResource(address, { kind: 'text' })`。
 
 地址放在 Host 的 `Basket.snapshot()` 里生成，而不是让客户端拼字符串，原因有三个：
 
 - **只有 Host 知道权威 cwd**：客户端的 cwd 是从会话快照里"借"来的，Host 的 `Basket.cwd` 才是登记文件时用的那个；
 - **编码只有一处实现**：逐段 `encodeURIComponent`、Windows 反斜杠转 POSIX、`..` 前缀判断（不能误杀 `..foo` 这种文件名）都集中在 `nativePreviewAddress()`，测试直接锁死；
-- **cwd 外文件天然没有地址**：绝对路径虽然地址语法支持 `absolute` scope，但当前 Document Preview 的类型只接受 `session` scope，所以这些文件返回 `native: null`，面板回退 `/file` 预览。以后内核放开 absolute scope，只需要改这一个函数。
+- **cwd 外文件天然没有地址**：绝对路径虽然地址语法支持 `absolute` scope，但当前 Document Preview 的类型只接受 `session` scope，所以这些文件返回 `native: null`，面板明确提示「复制路径或归档」。以后内核放开 absolute scope，只需要改这一个函数。
 
-客户端只做三件事：判断后缀是不是 Office、在 `sidebarRight` 可用时调 `openResource`、失败时回退普通预览。`sidebarRight` 不做硬性 inject：禁用右侧栏相关插件时鱼篓仍然可用。
+客户端只做三件事：取 `sidebarRight`、有 `native` 地址就调 `openResource`、失败时给提示。**不再出现 `window.open`**，client 测试里有一条静态检查防止回潮。`sidebarRight` 不做硬性 inject：禁用右侧栏相关插件时鱼篓仍然可用（只是预览给提示）。
 
 ## 归档保留策略为什么是可选的
 
@@ -135,7 +146,7 @@
 
 - **纯函数**（`scan` / `basket` / `zip` / `http`）单独测，不碰 Host。
 - **路由**用真实 `node:http` 服务 + `fetch` 打过去，测的是客户端实际会发的请求；覆盖 Range/ETag、cwd 外 zip 路径、归档失败与超大文件跳过。
-- **client bundle** 用假 `window.__ModuleLoader__` + 假 React 装配一遍，断言注册了正确的 tab/slot/locale，并检查中英文字典键集一致。
+- **client bundle** 用假 `window.__ModuleLoader__` + 假 React 装配一遍，断言注册了正确的 tab/slot/locale，并检查中英文字典键集一致；另有一条静态断言禁止源码出现 `window.open(`，防止预览在 Desktop 上再次静默失效。
 - **插件入口**用假 `ctx` 装配，模拟 `deliverables/presented` 事件后真的能从 HTTP 读到文件；并验证 GET /basket 只读缓存、POST /refresh 才重扫。
 - **原生预览地址**：纯函数测中文/空格/`#`、`..foo` 边界、cwd 外与空 session；`Basket.snapshot()` 断言 `native` 字段与删除后置空。
 - **归档保留**：真实 HTTP 连打三次 `/archive`，断言只留最近两批、`pruned` 数量、手工目录不被误删；`archiveKeep = 0` 断言不建 `runs/` 且响应没有 `pruned`。

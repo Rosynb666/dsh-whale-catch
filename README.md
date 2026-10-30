@@ -21,10 +21,10 @@
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="深海鱼篓 0.3.0 面板预览：排序、原生预览与行内差异" width="760">
+  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="深海鱼篓 0.3.2 面板预览：排序、预览入口与行内差异" width="760">
 </p>
 
-<p align="center"><sub>🧪 0.3.0 面板静态预览：用 <code>lib/client.js</code> 里真实的面板组件 + 示例数据渲染，不是 DSH 实机截图。排序框、Office「原生」按钮、行内差异都在图里；实际配色跟随你的主题。</sub></p>
+<p align="center"><sub>🧪 0.3.2 面板静态预览：用 <code>lib/client.js</code> 里真实的面板组件 + 示例数据渲染，不是 DSH 实机截图。排序框、预览入口、行内差异都在图里；实际配色跟随你的主题。</sub></p>
 
 给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的右侧栏插件：把一场会话里**产出或改动过的文件**汇总到「鱼篓」里，支持预览、行内差异、搜索、按轮分组、打包 zip、归档与复制清单。
 
@@ -80,7 +80,7 @@
 | 能力 | 你会看到什么 |
 |---|---|
 | 🧺 **自动收集** | `present` 声明、`workspace/changes` 改动、cwd 目录扫描三条来源合并；同一个绝对路径取并集 |
-| 👀 **就地预览** | 图片 / PDF / 文本 / 常见源码在新标签页直接看；HTML / SVG 在 CSP 沙箱里渲染；docx / xlsx / pptx 一键交给 DSH 原生预览；未知后缀的文本文件嗅探后内联 |
+| 👀 **就地预览** | 图片 / PDF / Markdown / 文本 / 源码 / Office 统一在右侧栏用 DSH Document Preview 打开；cwd 外文件会提示复制路径或归档 |
 | 🔍 **行内差异** | 对内核记录过的改动展开 unified diff：`+` / `−` 着色、`@@` 段头、新增 / 删除 / binary / oversized 提示 |
 | 🧭 **搜索与分组** | 按文件名 / 路径 / 描述搜索；按分类 chip 过滤；按「第 N 轮」分组；复制 Markdown 清单 |
 | 📦 **打包 zip** | 只打选中项或全部；包内附 `manifest.json` + `交付清单.md`；cwd 外文件统一 `_external/` |
@@ -90,14 +90,19 @@
 | 🌐 **中英双语** | 面板字典中英对齐；错误码有本地化文案 |
 | ⚡ **零构建** | `lib/client.js` 原样交给 `__ModuleLoader__`，没有打包步骤 |
 
+### 🎁 0.3.2 亮点
+
+- 🪟 **预览不再开新窗口**：Desktop 的 Electron 主进程会 deny 所有 `window.open`（只放行 `https:` 外链），之前「点预览没反应」就是这个原因。现在统一交给 DSH Document Preview：图片 / PDF / Markdown / 文本 / 源码 / Office 都在右侧栏打开。
+- 📍 只保留一个「预览」入口；cwd 外文件明确提示「复制路径或归档」，不再假装能打开。
+- 🖼️ 预览图按 0.3.2 面板重新渲染（排序 + 预览入口 + 行内差异）。
+
 ### 🎁 0.3.1 亮点
 
-- 🔎 **未知后缀也能预览**：`.patch`、`.bak` 这类文件先嗅探前 8 KiB，是文本就按 `text/plain` 内联，不再一律触发下载（Electron 里看起来像「点预览没反应」）。
-- 🖼️ README 预览图换成 0.3.0 面板实渲染：排序框、Office「原生」按钮、行内差异都在图里。
+- 🔎 **未知后缀也能读**：`/file` 对 `.patch`、`.bak` 这类文件先嗅探前 8 KiB，是文本就按 `text/plain` 返回，不再一律触发下载。
 
 ### 🎁 0.3.0 亮点
 
-- 📄 **Office 原生预览**：docx / xlsx / pptx 点「原生」即可在右侧栏用 DSH 的 Document Preview 打开，转换由内核 `officeToPdf` 完成；禁用预览插件或 cwd 外文件时自动回退普通预览。
+- 📄 **Office 文档交给 Document Preview**：docx / xlsx / pptx 由 DSH 的预览按 PDF 渲染，转换交给内核 `officeToPdf`；0.3.2 起与其他文件统一成一个「预览」入口。
 - ↕️ **排序**：最近修改 / 名称 / 体积 / 类型，四档切换；已删除文件永远沉底。
 - 🪟 **分批渲染**：先铺 200 行，点「显示更多」再追加——800 条也不会一次全渲染。
 - 🧹 **归档保留策略**（可选）：`archiveKeep: 2` 时每次归档写进独立批次目录，只保留最近 2 批；默认 `0` 保持旧布局，行为不变。
@@ -191,8 +196,7 @@ dsh plugin --profile <profile> remove dsh-whale-catch
 | ↕️ **排序** | 最近修改 / 名称 / 体积 / 类型，选择后立即重排 |
 | 📋 **复制清单** | 当前勾选（没有勾选时用当前筛选）导出 Markdown，贴周报 / Issue |
 | ⧉ **复制路径** | 复制绝对路径，贴给别的工具最省事 |
-| 👁️ **预览** | 新标签页打开原文件；图片 / PDF / 文本 / 源码内联 |
-| 📄 **原生** | docx / xlsx / pptx 交给 DSH 的 Document Preview，在右侧栏直接看 |
+| 👁️ **预览** | 在右侧栏用 DSH Document Preview 打开（图片 / PDF / Markdown / 文本 / 源码 / Office）；cwd 外文件提示不可预览 |
 | 🧾 **差异** | 就地展开内核留下的 unified diff；只有带 `workspace/changes` 记录的条目才有 |
 | 📦 **打包 zip** | 生成带交付清单的 zip，直接下载 |
 | 🗂️ **归档** | 复制到配置的归档目录，失败会显示「成功 N / 失败 M」 |
@@ -344,7 +348,7 @@ session/event
 | 项目 | 支持范围 |
 |---|---|
 | DSH | `>= 0.2.0-rc.2` |
-| 原生预览 | 需要 DSH `>= 0.2.1` 的 Document Preview 与 `sidebarRight.openResource()`；低版本自动回退普通预览 |
+| 预览 | 需要 DSH `>= 0.2.1` 的 Document Preview 与 `sidebarRight.openResource()`；cwd 内文件均可预览，cwd 外文件给提示 |
 | Node | `^22.19 || >=24` |
 | 平台 | macOS / Windows / Linux（CI 三平台 × Node 22/24） |
 | 构建 | 无；`lib/client.js` 原样加载 |
@@ -361,7 +365,7 @@ session/event
 | 差异依赖内核能力 | 宿主没有 `workspaceChanges.diff()` 时面板只给提示 |
 | 长 diff 截断 | `/diff` 最多 1200 行，面板每条 hunk 最多铺 300 行 |
 | 归档不自动清理 | 默认在 `$DSH_HOME` 下不清理；需要保留策略时设置 `archiveKeep` |
-| 预览受浏览器能力限制 | PDF / 图片 / 文本 / 常见源码内联；HTML/SVG 沙箱；Office 走 DSH 原生预览；未知后缀先嗅探文本，真正的二进制仍按附件下载 |
+| 预览依赖 DSH 预览插件 | 预览走 Document Preview；插件被禁用时面板提示打不开。cwd 外文件没有 `dsh-resource` 地址，提示复制路径或归档 |
 | 大列表分批渲染 | 先铺 200 行、点「显示更多」追加；还没有真正的窗口化；搜索是子串匹配 |
 | 点文件不自动收集 | `.env` 等需要 `present` 显式声明 |
 
@@ -380,9 +384,9 @@ session/event
 </details>
 
 <details>
-<summary><b>为什么 docx / xlsx 点预览变成下载？</b></summary>
+<summary><b>为什么点预览没有反应？</b></summary>
 
-浏览器原生不渲染 Office。点行右侧的「原生」，鱼篓会把文件交给 DSH 自带的 Document Preview，在右侧栏里按 PDF 渲染；只有 cwd 外文件或禁用预览插件时才会回退成附件下载。
+0.3.2 起预览统一走 DSH 的 Document Preview，不再开新窗口。之前用 `window.open` 打开本机 `/file` 地址，会被 Desktop 的 Electron 主进程静默拒绝（它只放行 `https:` 外链），所以看起来像按钮坏了。升级到 0.3.2 后，cwd 内文件点「预览」应在右侧栏打开；cwd 外文件会提示复制路径或归档。
 </details>
 
 <details>
@@ -401,7 +405,7 @@ npm pack --dry-run --cache="$(mktemp -d)"
 
 ```sh
 npm install
-npm test        # 67 项：扫描 / 合并 / 改动元数据 / 流式 zip / Range / HTTP 栅栏 / 差异裁剪 / 原生地址 / 归档保留 / 插件装载
+npm test        # 68 项：扫描 / 合并 / 改动元数据 / 流式 zip / Range / HTTP 栅栏 / 差异裁剪 / 原生地址 / 归档保留 / 插件装载
 npm run check   # 契约自检：包结构、patch、client.inject、locale meta、icon、依赖纪律
 npm run verify  # check + test
 ```

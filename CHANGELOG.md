@@ -2,6 +2,14 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.3.2] - 2026-10-30
+
+### 修复
+
+- **桌面端「点预览没反应」**：DSH Desktop 的 Electron 主进程对所有 `window.open` 返回 deny（只把 `https:` 外链交给系统浏览器），鱼篓用 `window.open` 打本机 `/file` 地址一直被静默拦截。
+- 预览统一改走 DSH Document Preview：cwd 内文件由 Host 生成 `dsh-resource://file/session/…` 地址，客户端调 `sidebarRight.openResource()`；图片 / PDF / Markdown / 文本 / 源码 / Office 都在右侧栏打开。cwd 外文件明确提示「复制路径或归档」，不再假装能打开。
+- 移除单独的「原生」按钮，只保留一个「预览」入口；新增回归测试禁止客户端再出现 `window.open(`。
+
 ## [0.3.1] - 2026-10-30
 
 ### 修复

@@ -112,3 +112,10 @@ test('导出 inject / apply，并正确注册 tab 类型与 pane 主体', () => 
   assert.equal(slot.definition.locale, 'whale-catch')
   assert.equal(typeof slot.component, 'function')
 })
+
+test('预览不再用 window.open（Desktop 会 deny 所有新窗口）', async () => {
+  const { readFileSync } = await import('node:fs')
+  const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+  assert.equal(source.includes('window.open('), false, 'window.open 在 Desktop 会被静默拒绝，预览必须走 Document Preview')
+  assert.ok(source.includes('openResource('), '预览应调用 sidebarRight.openResource')
+})

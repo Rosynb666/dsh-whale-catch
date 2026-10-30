@@ -21,10 +21,10 @@
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="Whale Catch 0.3.0 panel preview: sorting, native preview and inline diff" width="760">
+  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="Whale Catch 0.3.2 panel preview: sorting, preview action and inline diff" width="760">
 </p>
 
-<p align="center"><sub>🧪 Static 0.3.0 panel preview rendered with the real component in <code>lib/client.js</code> and sample data — not a live DSH screenshot. Sorting, the native Office button and the inline diff are all visible; colours follow your theme.</sub></p>
+<p align="center"><sub>🧪 Static 0.3.2 panel preview rendered with the real component in <code>lib/client.js</code> and sample data — not a live DSH screenshot. Sorting, the preview action and the inline diff are all visible; colours follow your theme.</sub></p>
 
 A right-sidebar plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH): it collects the files a session **produced or changed** into one basket, with preview, inline diff, search, grouping, zip, archive and copy-as-Markdown.
 
@@ -80,7 +80,7 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 | Capability | What you get |
 |---|---|
 | 🧺 **Automatic collection** | `present` declarations, `workspace/changes` edits, and a cwd scan merged by absolute path |
-| 👀 **In-place preview** | images / PDF / text / common source files open in a new tab; HTML / SVG render in a CSP sandbox; docx / xlsx / pptx open in the native DSH preview; text files with unknown extensions are sniffed and inlined |
+| 👀 **In-place preview** | images / PDF / Markdown / text / source / Office open in the right sidebar through DSH Document Preview; files outside cwd show a copy-path-or-archive hint |
 | 🔍 **Inline diff** | unified diff for kernel-recorded changes: `+` / `−` colours, `@@` headers, new / deleted / binary / oversized notes |
 | 🧭 **Search & grouping** | search by name / path / description; kind chips; group by “Turn N”; copy as Markdown |
 | 📦 **Zip** | selected or all files; `manifest.json` + a human-readable checklist inside; cwd-outside files under `_external/` |
@@ -90,14 +90,19 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 | 🌐 **Bilingual** | Chinese and English dictionaries; localised error codes |
 | ⚡ **Zero build** | `lib/client.js` is handed to `__ModuleLoader__` as-is |
 
+### 🎁 What's new in 0.3.2
+
+- 🪟 **Preview no longer opens a new window**: the Desktop Electron main process denies every `window.open` (only `https:` links are handed to the system browser), which was why the preview button silently did nothing. Preview now goes through DSH Document Preview, so images / PDF / Markdown / text / source / Office all open in the right sidebar.
+- 📍 One preview entry; files outside cwd get an explicit “copy path or archive” hint.
+- 🖼️ Preview image re-rendered from the 0.3.2 panel (sorting + preview action + inline diff).
+
 ### 🎁 What's new in 0.3.1
 
-- 🔎 **Unknown extensions preview too**: `.patch` / `.bak` files are sniffed (first 8 KiB); text renders as `text/plain` instead of downloading — which looked like a dead button in Electron.
-- 🖼️ README preview image re-rendered from the 0.3.0 panel: sorting, the native Office button and inline diff are all visible.
+- 🔎 **Unknown extensions are readable too**: `/file` sniffs the first 8 KiB of `.patch` / `.bak` files and returns `text/plain` for text instead of forcing a download.
 
 ### 🎁 What's new in 0.3.0
 
-- 📄 **Native Office preview**: click **Native** on a docx / xlsx / pptx to open it in DSH's Document Preview; the kernel's `officeToPdf` does the conversion, and the panel falls back to the normal preview when the preview plugin is disabled or the file lives outside cwd.
+- 📄 **Office documents go to Document Preview**: docx / xlsx / pptx render as PDFs via the kernel's `officeToPdf`; since 0.3.2 they share the single preview entry with every other file.
 - ↕️ **Sorting**: modified / name / size / kind; missing files always sink to the bottom.
 - 🪟 **Batched rendering**: the first 200 rows render immediately, **Show more** appends the rest — 800 entries no longer render at once.
 - 🧹 **Optional archive retention**: with `archiveKeep: 2`, every archive run gets its own batch directory and only the newest two are kept; the default `0` keeps the old layout unchanged.
@@ -191,8 +196,7 @@ A narrow sidebar layout (illustrative; actual width follows the sidebar):
 | ↕️ **Sort** | modified / name / size / kind; re-renders immediately |
 | 📋 **Copy list** | export the selection (or current filter) as Markdown for a report or issue |
 | ⧉ **Copy path** | copy the absolute path |
-| 👁️ **Open** | open the original file in a new tab; images / PDF / text / source inline |
-| 📄 **Native** | hand docx / xlsx / pptx to DSH's Document Preview in the right sidebar |
+| 👁️ **Open** | open in the right sidebar through DSH Document Preview (images / PDF / Markdown / text / source / Office); files outside cwd show a hint |
 | 🧾 **Diff** | expand the kernel's unified diff; only entries with a `workspace/changes` record have one |
 | 📦 **Zip** | download a zip with the delivery manifest |
 | 🗂️ **Archive** | copy into the configured archive directory; shows “N archived / M failed” |
@@ -344,7 +348,7 @@ The routes live on the loopback Host. The threat model is **a third-party page i
 | Item | Range |
 |---|---|
 | DSH | `>= 0.2.0-rc.2` |
-| Native preview | needs DSH `>= 0.2.1` (Document Preview + `sidebarRight.openResource()`); older versions fall back to the normal preview |
+| Preview | needs DSH `>= 0.2.1` (Document Preview + `sidebarRight.openResource()`); cwd files preview, files outside cwd show a hint |
 | Node | `^22.19 || >=24` |
 | Platforms | macOS / Windows / Linux (CI: three platforms × Node 22/24) |
 | Build | none; `lib/client.js` loads as-is |
@@ -361,7 +365,7 @@ The routes live on the loopback Host. The threat model is **a third-party page i
 | Diffs depend on kernel capability | a Host without `workspaceChanges.diff()` shows the “no readable diff” note |
 | Long diffs truncated | `/diff` returns at most 1200 lines; the panel renders at most 300 lines per hunk |
 | No archive cleanup by default | the archive lives under `$DSH_HOME` and is not pruned; set `archiveKeep` to retain batches |
-| Browser-bound preview | PDF / images / text / common source inline; HTML/SVG sandboxed; Office opens in the native DSH preview; unknown extensions are sniffed for text, real binaries still download |
+| Preview needs the DSH preview plugin | preview goes through Document Preview; a disabled plugin shows a notice. Files outside cwd have no `dsh-resource` address, so the panel asks you to copy the path or archive |
 | Large lists | the first 200 rows render, the rest via **Show more**; no true virtualization yet; search is substring only |
 | Dot-files not auto-collected | `.env` and friends need an explicit `present` |
 
@@ -380,9 +384,9 @@ Only files with a `workspace/changes` record have before/after snapshots. Scanne
 </details>
 
 <details>
-<summary><b>Why does docx / xlsx download instead of preview?</b></summary>
+<summary><b>Why does the preview button do nothing?</b></summary>
 
-Browsers do not render Office natively. Click **Native** on the row and Whale Catch hands the file to DSH's Document Preview, which renders it as a PDF in the right sidebar; only files outside cwd, or a disabled preview plugin, fall back to a download.
+Since 0.3.2 preview goes through DSH's Document Preview instead of opening a new window. The old code used `window.open` on the local `/file` URL, which the Desktop Electron main process denies silently (it only forwards `https:` links), so the button looked broken. After upgrading, cwd files should open in the right sidebar; files outside cwd show a copy-path-or-archive hint.
 </details>
 
 <details>
@@ -401,7 +405,7 @@ npm pack --dry-run --cache="$(mktemp -d)"
 
 ```sh
 npm install
-npm test        # 67 tests: scan / merge / change metadata / streaming zip / Range / HTTP fence / diff trim / native addresses / archive retention / plugin load
+npm test        # 68 tests: scan / merge / change metadata / streaming zip / Range / HTTP fence / diff trim / native addresses / archive retention / plugin load
 npm run check   # contract self-check: package shape, patch, client.inject, locale meta, icon, deps
 npm run verify  # check + test
 ```
