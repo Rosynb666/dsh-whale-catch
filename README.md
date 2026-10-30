@@ -21,10 +21,10 @@
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="深海鱼篓面板预览" width="760">
+  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="深海鱼篓 0.3.0 面板预览：排序、原生预览与行内差异" width="760">
 </p>
 
-<p align="center"><sub>🧪 用 <code>lib/client.js</code> 里真实的面板组件 + 示例数据渲染的静态预览，不是 DSH 实机截图；实际配色跟随你的主题。</sub></p>
+<p align="center"><sub>🧪 0.3.0 面板静态预览：用 <code>lib/client.js</code> 里真实的面板组件 + 示例数据渲染，不是 DSH 实机截图。排序框、Office「原生」按钮、行内差异都在图里；实际配色跟随你的主题。</sub></p>
 
 给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的右侧栏插件：把一场会话里**产出或改动过的文件**汇总到「鱼篓」里，支持预览、行内差异、搜索、按轮分组、打包 zip、归档与复制清单。
 
@@ -80,7 +80,7 @@
 | 能力 | 你会看到什么 |
 |---|---|
 | 🧺 **自动收集** | `present` 声明、`workspace/changes` 改动、cwd 目录扫描三条来源合并；同一个绝对路径取并集 |
-| 👀 **就地预览** | 图片 / PDF / 文本 / 常见源码在新标签页直接看；HTML / SVG 在 CSP 沙箱里渲染；docx / xlsx / pptx 一键交给 DSH 原生预览 |
+| 👀 **就地预览** | 图片 / PDF / 文本 / 常见源码在新标签页直接看；HTML / SVG 在 CSP 沙箱里渲染；docx / xlsx / pptx 一键交给 DSH 原生预览；未知后缀的文本文件嗅探后内联 |
 | 🔍 **行内差异** | 对内核记录过的改动展开 unified diff：`+` / `−` 着色、`@@` 段头、新增 / 删除 / binary / oversized 提示 |
 | 🧭 **搜索与分组** | 按文件名 / 路径 / 描述搜索；按分类 chip 过滤；按「第 N 轮」分组；复制 Markdown 清单 |
 | 📦 **打包 zip** | 只打选中项或全部；包内附 `manifest.json` + `交付清单.md`；cwd 外文件统一 `_external/` |
@@ -89,6 +89,11 @@
 | 🌗 **跟随主题** | 只用 `--dsw-alias-*` / `--dsw-static-*` 主题 token，深色 / 浅色自动适配 |
 | 🌐 **中英双语** | 面板字典中英对齐；错误码有本地化文案 |
 | ⚡ **零构建** | `lib/client.js` 原样交给 `__ModuleLoader__`，没有打包步骤 |
+
+### 🎁 0.3.1 亮点
+
+- 🔎 **未知后缀也能预览**：`.patch`、`.bak` 这类文件先嗅探前 8 KiB，是文本就按 `text/plain` 内联，不再一律触发下载（Electron 里看起来像「点预览没反应」）。
+- 🖼️ README 预览图换成 0.3.0 面板实渲染：排序框、Office「原生」按钮、行内差异都在图里。
 
 ### 🎁 0.3.0 亮点
 
@@ -356,7 +361,7 @@ session/event
 | 差异依赖内核能力 | 宿主没有 `workspaceChanges.diff()` 时面板只给提示 |
 | 长 diff 截断 | `/diff` 最多 1200 行，面板每条 hunk 最多铺 300 行 |
 | 归档不自动清理 | 默认在 `$DSH_HOME` 下不清理；需要保留策略时设置 `archiveKeep` |
-| 预览受浏览器能力限制 | PDF / 图片 / 文本 / 常见源码内联；HTML/SVG 沙箱；Office 走 DSH 原生预览，cwd 外文件仍只能下载 |
+| 预览受浏览器能力限制 | PDF / 图片 / 文本 / 常见源码内联；HTML/SVG 沙箱；Office 走 DSH 原生预览；未知后缀先嗅探文本，真正的二进制仍按附件下载 |
 | 大列表分批渲染 | 先铺 200 行、点「显示更多」追加；还没有真正的窗口化；搜索是子串匹配 |
 | 点文件不自动收集 | `.env` 等需要 `present` 显式声明 |
 
@@ -396,7 +401,7 @@ npm pack --dry-run --cache="$(mktemp -d)"
 
 ```sh
 npm install
-npm test        # 65 项：扫描 / 合并 / 改动元数据 / 流式 zip / Range / HTTP 栅栏 / 差异裁剪 / 原生地址 / 归档保留 / 插件装载
+npm test        # 67 项：扫描 / 合并 / 改动元数据 / 流式 zip / Range / HTTP 栅栏 / 差异裁剪 / 原生地址 / 归档保留 / 插件装载
 npm run check   # 契约自检：包结构、patch、client.inject、locale meta、icon、依赖纪律
 npm run verify  # check + test
 ```

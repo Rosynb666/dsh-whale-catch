@@ -21,10 +21,10 @@
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="Whale Catch panel preview" width="760">
+  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="Whale Catch 0.3.0 panel preview: sorting, native preview and inline diff" width="760">
 </p>
 
-<p align="center"><sub>🧪 Static preview rendered with the real panel component in <code>lib/client.js</code> and sample data — not a live DSH screenshot. Colours follow your theme.</sub></p>
+<p align="center"><sub>🧪 Static 0.3.0 panel preview rendered with the real component in <code>lib/client.js</code> and sample data — not a live DSH screenshot. Sorting, the native Office button and the inline diff are all visible; colours follow your theme.</sub></p>
 
 A right-sidebar plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH): it collects the files a session **produced or changed** into one basket, with preview, inline diff, search, grouping, zip, archive and copy-as-Markdown.
 
@@ -80,7 +80,7 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 | Capability | What you get |
 |---|---|
 | 🧺 **Automatic collection** | `present` declarations, `workspace/changes` edits, and a cwd scan merged by absolute path |
-| 👀 **In-place preview** | images / PDF / text / common source files open in a new tab; HTML / SVG render in a CSP sandbox; docx / xlsx / pptx open in the native DSH preview |
+| 👀 **In-place preview** | images / PDF / text / common source files open in a new tab; HTML / SVG render in a CSP sandbox; docx / xlsx / pptx open in the native DSH preview; text files with unknown extensions are sniffed and inlined |
 | 🔍 **Inline diff** | unified diff for kernel-recorded changes: `+` / `−` colours, `@@` headers, new / deleted / binary / oversized notes |
 | 🧭 **Search & grouping** | search by name / path / description; kind chips; group by “Turn N”; copy as Markdown |
 | 📦 **Zip** | selected or all files; `manifest.json` + a human-readable checklist inside; cwd-outside files under `_external/` |
@@ -89,6 +89,11 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 | 🌗 **Theme-aware** | only `--dsw-alias-*` / `--dsw-static-*` tokens; dark / light follows DSH |
 | 🌐 **Bilingual** | Chinese and English dictionaries; localised error codes |
 | ⚡ **Zero build** | `lib/client.js` is handed to `__ModuleLoader__` as-is |
+
+### 🎁 What's new in 0.3.1
+
+- 🔎 **Unknown extensions preview too**: `.patch` / `.bak` files are sniffed (first 8 KiB); text renders as `text/plain` instead of downloading — which looked like a dead button in Electron.
+- 🖼️ README preview image re-rendered from the 0.3.0 panel: sorting, the native Office button and inline diff are all visible.
 
 ### 🎁 What's new in 0.3.0
 
@@ -356,7 +361,7 @@ The routes live on the loopback Host. The threat model is **a third-party page i
 | Diffs depend on kernel capability | a Host without `workspaceChanges.diff()` shows the “no readable diff” note |
 | Long diffs truncated | `/diff` returns at most 1200 lines; the panel renders at most 300 lines per hunk |
 | No archive cleanup by default | the archive lives under `$DSH_HOME` and is not pruned; set `archiveKeep` to retain batches |
-| Browser-bound preview | PDF / images / text / common source inline; HTML/SVG sandboxed; Office opens in the native DSH preview, files outside cwd still download |
+| Browser-bound preview | PDF / images / text / common source inline; HTML/SVG sandboxed; Office opens in the native DSH preview; unknown extensions are sniffed for text, real binaries still download |
 | Large lists | the first 200 rows render, the rest via **Show more**; no true virtualization yet; search is substring only |
 | Dot-files not auto-collected | `.env` and friends need an explicit `present` |
 
@@ -396,7 +401,7 @@ npm pack --dry-run --cache="$(mktemp -d)"
 
 ```sh
 npm install
-npm test        # 65 tests: scan / merge / change metadata / streaming zip / Range / HTTP fence / diff trim / native addresses / archive retention / plugin load
+npm test        # 67 tests: scan / merge / change metadata / streaming zip / Range / HTTP fence / diff trim / native addresses / archive retention / plugin load
 npm run check   # contract self-check: package shape, patch, client.inject, locale meta, icon, deps
 npm run verify  # check + test
 ```

@@ -112,7 +112,7 @@ npm run verify
 ```
 
 - [ ] `npm run check` 全绿（包结构 / patch / client.inject / meta / icon / 依赖纪律）
-- [ ] `npm test` 全绿（65 项）
+- [ ] `npm test` 全绿（67 项）
 - [ ] npm 发布路径可用：npm 包里已绑定 Trusted Publishing，或仓库里有有效的 `NPM_TOKEN` 回落
 - [ ] `npm pack --dry-run` 的文件清单符合预期
 - [ ] 在干净的 profile 里装一次（Desktop 走 设置 → 插件 → 安装，CLI 用 `dsh plugin --profile <profile> add <tarball 或仓库地址>`）

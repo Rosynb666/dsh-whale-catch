@@ -2,6 +2,19 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.3.1] - 2026-10-30
+
+### 修复
+
+- **未知后缀的文本文件不再「点预览没反应」**：`/file` 对 `application/octet-stream` 的文件先读 8 KiB 嗅探 UTF-8 文本，`.patch`、`.bak` 这类文本按 `text/plain` 内联；真正的二进制（tgz、zip 等）仍按附件下载。
+- 8 KiB 截断落在多字节字符中间时最多回退 3 个字节再判定，中文文本不会被误判成二进制；NUL 字节与控制字符比例过高仍判二进制。
+- `.patch` / `.diff` 加入源码后缀快速通道，直接内联，不用嗅探。
+
+### 文档
+
+- README 预览图按 0.3.0 面板重画：排序框、Office「原生」按钮、行内差异都出现在图里。
+- 测试 65 → 67：文本嗅探的 UTF-8 / 截断 / 二进制判定，`/file` 的内联与附件分支。
+
 ## [0.3.0] - 2026-10-30
 
 ### 新增

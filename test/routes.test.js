@@ -719,3 +719,32 @@ test('archiveKeep：runs 被换成指向外部的符号链接时拒绝归档', a
   assert.equal((await response.json()).error.code, 'unsafe-path')
   assert.deepEqual(await fs.readdir(outside), [], '不能往归档根之外写任何东西')
 })
+
+test('file 对未知后缀嗅探文本：文本内联、二进制仍下载', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const binary = Buffer.from([0x00, 0x01, 0x02, 0xff])
+  const server = await serve(await makeStore(dir, [
+    { rel: 'notes.bak', content: 'key: value\n第二行\n' },
+    { rel: 'blob.dat', content: binary },
+    { rel: 'empty.unknown', content: '' },
+  ]))
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  const textRes = await fetch(`${server.base}file?session=session-test&path=${encodeURIComponent('notes.bak')}`)
+  assert.equal(textRes.status, 200)
+  assert.match(textRes.headers.get('content-type') ?? '', /^text\/plain/)
+  assert.match(textRes.headers.get('content-disposition') ?? '', /^inline;/)
+  assert.equal(await textRes.text(), 'key: value\n第二行\n')
+
+  const binRes = await fetch(`${server.base}file?session=session-test&path=${encodeURIComponent('blob.dat')}`)
+  assert.equal(binRes.status, 200)
+  assert.equal(binRes.headers.get('content-type'), 'application/octet-stream')
+  assert.match(binRes.headers.get('content-disposition') ?? '', /^attachment;/)
+
+  const emptyRes = await fetch(`${server.base}file?session=session-test&path=${encodeURIComponent('empty.unknown')}`)
+  assert.equal(emptyRes.status, 200)
+  assert.match(emptyRes.headers.get('content-type') ?? '', /^text\/plain/)
+})

@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-catch",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "深海鱼篓：不用 agent 登记，自动收进本次会话产出的文件，右侧栏预览、看改动差异、打包 zip、归档。Zero-registration deliverable basket for DeepSeek Harness.",
   "type": "module",
   "main": "./lib/index.js",

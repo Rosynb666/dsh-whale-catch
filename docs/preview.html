@@ -131,6 +131,10 @@
     file.binary = false
     file.oversized = false
     file.diffable = changed
+    // 0.3.0：cwd 内的 Office 文件带原生预览地址，行内会多出「原生」按钮
+    file.native = ['docx', 'xlsx', 'pptx'].includes(file.ext)
+      ? 'dsh-resource://file/session/preview/' + encodeURIComponent(file.rel)
+      : null
   })
 
   window.fetch = (url, init) => {
@@ -189,6 +193,7 @@
       bind() { return (key) => key },
     },
     sidebarRightTabs: { register() { return () => {} } },
+    get(name) { return name === 'sidebarRight' ? { openResource() {} } : undefined },
     slots: {
       inject(name, factory) { return factory() },
       register(def, component) { Panel = component; return () => {} },

@@ -8,6 +8,7 @@ import {
   isAllowedHost,
   isInlineType,
   isSameOrigin,
+  looksLikeText,
   needsSandbox,
   parseRange,
   readJsonBody,
@@ -42,10 +43,21 @@ test('contentTypeFor 与 isInlineType：pdf/图片/文本内联，docx 走附件
   assert.equal(isInlineType(contentTypeFor('a.pdf')), true)
   assert.equal(isInlineType(contentTypeFor('a.docx')), false)
   assert.equal(contentTypeFor('no-extension'), 'application/octet-stream')
-  for (const name of ['main.py', 'app.ts', 'view.tsx', 'deploy.yml', 'run.sh', 'query.sql']) {
+  for (const name of ['main.py', 'app.ts', 'view.tsx', 'deploy.yml', 'run.sh', 'query.sql', 'fix.patch']) {
     assert.match(contentTypeFor(name), /^text\/plain/, `${name} 应该内联成纯文本`)
     assert.equal(isInlineType(contentTypeFor(name)), true)
   }
+})
+
+test('looksLikeText：UTF-8 文本 / 截断的多字节 / 二进制', () => {
+  assert.equal(looksLikeText(Buffer.from('hello 世界\n')), true)
+  assert.equal(looksLikeText(Buffer.alloc(0)), true)
+  // 8 KiB 截断可能切坏最后一个汉字；回退 1~3 字节后仍应判成文本
+  const text = Buffer.from('中文内容'.repeat(2000))
+  assert.equal(looksLikeText(text.subarray(0, text.length - 1)), true)
+  assert.equal(looksLikeText(Buffer.from([0x00, 0x01, 0x02, 0xff])), false)
+  assert.equal(looksLikeText(Buffer.from([0x1f, 0x8b, 0x08, 0x00])), false)
+  assert.equal(looksLikeText(Buffer.from([1, 2, 3, 4, 5, 6, 7, 8])), false, '控制字符比例过高按二进制')
 })
 
 test('parseRange：单段、后缀、越界与非法值', () => {
