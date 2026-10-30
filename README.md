@@ -80,7 +80,7 @@
 | 能力 | 你会看到什么 |
 |---|---|
 | 🧺 **自动收集** | `present` 声明、`workspace/changes` 改动、cwd 目录扫描三条来源合并；同一个绝对路径取并集 |
-| 👀 **就地预览** | 图片 / PDF / 文本 / 常见源码在新标签页直接看；HTML / SVG 在 CSP 沙箱里渲染；Office 走下载 |
+| 👀 **就地预览** | 图片 / PDF / 文本 / 常见源码在新标签页直接看；HTML / SVG 在 CSP 沙箱里渲染；docx / xlsx / pptx 一键交给 DSH 原生预览 |
 | 🔍 **行内差异** | 对内核记录过的改动展开 unified diff：`+` / `−` 着色、`@@` 段头、新增 / 删除 / binary / oversized 提示 |
 | 🧭 **搜索与分组** | 按文件名 / 路径 / 描述搜索；按分类 chip 过滤；按「第 N 轮」分组；复制 Markdown 清单 |
 | 📦 **打包 zip** | 只打选中项或全部；包内附 `manifest.json` + `交付清单.md`；cwd 外文件统一 `_external/` |
@@ -89,6 +89,13 @@
 | 🌗 **跟随主题** | 只用 `--dsw-alias-*` / `--dsw-static-*` 主题 token，深色 / 浅色自动适配 |
 | 🌐 **中英双语** | 面板字典中英对齐；错误码有本地化文案 |
 | ⚡ **零构建** | `lib/client.js` 原样交给 `__ModuleLoader__`，没有打包步骤 |
+
+### 🎁 0.3.0 亮点
+
+- 📄 **Office 原生预览**：docx / xlsx / pptx 点「原生」即可在右侧栏用 DSH 的 Document Preview 打开，转换由内核 `officeToPdf` 完成；禁用预览插件或 cwd 外文件时自动回退普通预览。
+- ↕️ **排序**：最近修改 / 名称 / 体积 / 类型，四档切换；已删除文件永远沉底。
+- 🪟 **分批渲染**：先铺 200 行，点「显示更多」再追加——800 条也不会一次全渲染。
+- 🧹 **归档保留策略**（可选）：`archiveKeep: 2` 时每次归档写进独立批次目录，只保留最近 2 批；默认 `0` 保持旧布局，行为不变。
 
 ### 🎁 0.2.2 亮点
 
@@ -110,15 +117,18 @@
 
 ### 1. 安装
 
+Desktop 用户走应用内：**设置 → 插件 → 安装**，粘贴下面任一标识（`desktop` profile 由 Electron 独占，命令行 `dsh plugin --profile desktop add` 会被拒绝）：
+
+```text
+github:Rosynb666/dsh-whale-catch     # GitHub 最新 main
+dsh-whale-catch@0.3.0                # npm 指定版本
+```
+
+非 Desktop 的自建 profile 才用 CLI：
+
 ```sh
-# 从 GitHub 安装
-dsh plugin --profile desktop add github:Rosynb666/dsh-whale-catch
-
-# 从 npm 安装（推荐）
-dsh plugin --profile desktop add dsh-whale-catch
-
-# 本地开发：直接用目录
-dsh plugin --profile desktop add /绝对路径/dsh-whale-catch
+dsh plugin --profile <profile> add github:Rosynb666/dsh-whale-catch
+dsh plugin --profile <profile> add dsh-whale-catch@0.3.0
 ```
 
 ### 2. 打开面板
@@ -131,8 +141,10 @@ dsh plugin --profile desktop add /绝对路径/dsh-whale-catch
 
 ### 卸载
 
+Desktop：**设置 → 插件 → 卸载**。非 Desktop profile：
+
 ```sh
-dsh plugin --profile desktop remove dsh-whale-catch
+dsh plugin --profile <profile> remove dsh-whale-catch
 ```
 
 ---
@@ -171,12 +183,15 @@ dsh plugin --profile desktop remove dsh-whale-catch
 | 🏷️ **分类 chip** | 全部 / 文档 / 表格 / 演示 / 图片 / 代码 / 压缩 / 音视频 / 其他 |
 | 🔎 **搜索框** | 文件名、相对路径、描述的 case-insensitive 子串匹配 |
 | 🔀 **按轮分组** | 按「第 N 轮」分段，轮次倒序，没标轮次的沉底 |
+| ↕️ **排序** | 最近修改 / 名称 / 体积 / 类型，选择后立即重排 |
 | 📋 **复制清单** | 当前勾选（没有勾选时用当前筛选）导出 Markdown，贴周报 / Issue |
 | ⧉ **复制路径** | 复制绝对路径，贴给别的工具最省事 |
-| 👁️ **预览** | 新标签页打开原文件；图片 / PDF / 文本 / 源码内联，Office 下载 |
+| 👁️ **预览** | 新标签页打开原文件；图片 / PDF / 文本 / 源码内联 |
+| 📄 **原生** | docx / xlsx / pptx 交给 DSH 的 Document Preview，在右侧栏直接看 |
 | 🧾 **差异** | 就地展开内核留下的 unified diff；只有带 `workspace/changes` 记录的条目才有 |
 | 📦 **打包 zip** | 生成带交付清单的 zip，直接下载 |
 | 🗂️ **归档** | 复制到配置的归档目录，失败会显示「成功 N / 失败 M」 |
+| 🔎 **显示更多** | 超过 200 条时先铺前 200 行，点一下继续追加 |
 
 ### 📦 打包后的 zip 长这样
 
@@ -200,6 +215,18 @@ $DSH_HOME/whale-catch/archive/
     ├── 项目周报.docx
     ├── assets/chart.png
     └── _external/外部交付.pdf
+```
+
+开启 `archiveKeep` 后，每次归档进独立批次，旧批次自动清理：
+
+```text
+$DSH_HOME/whale-catch/archive/
+└── <session-id>/
+    └── runs/
+        ├── 20261030-153012-120/
+        │   └── 项目周报.docx
+        └── 20261030-160145-004/   # 只保留最近 N 批
+            └── 项目周报.docx
 ```
 
 <a id="how"></a>
@@ -261,6 +288,7 @@ session/event
     maxFileBytes: 67108864              # 单文件上限 64 MB
     maxZipBytes: 536870912              # 打包总量上限 512 MB
     maxBodyBytes: 1048576               # 请求体上限 1 MB
+    archiveKeep: 0                      # 归档保留批次数；0 = 不启用批次目录与清理
     lookbackMinutes: 720                # 拿不到会话创建时间时往回看 12 小时
     allowHosts: []                      # 额外放行的 Host 名；默认只认 localhost / IP 字面量
 ```
@@ -274,6 +302,7 @@ session/event
 | `maxFileBytes` | `67108864` | 单文件上限；zip 与归档共用 |
 | `maxZipBytes` | `536870912` | 打包总量上限；也用于 zip 预检 |
 | `maxBodyBytes` | `1048576` | JSON 请求体上限 |
+| `archiveKeep` | `0` | 归档保留批次数；`0` 保持旧布局，`> 0` 时每次归档进 `runs/<时间戳>/` 并清理旧批次 |
 | `lookbackMinutes` | `720` | 拿不到会话创建时间时，往回看多少分钟 |
 | `allowHosts` | `[]` | 额外放行的 Host 名（反代域名等）；IP 字面量与 `localhost` 总是允许 |
 
@@ -292,7 +321,7 @@ session/event
 | 🧾 **JSON 写操作** | 跨站表单发不出 `application/json`；声明它会触发预检，预检被 415 挡掉 |
 | 🧪 **内联沙箱** | HTML / SVG 响应带 `Content-Security-Policy: sandbox`：能渲染样式，脚本不执行、源变 opaque |
 | 📦 **zip 校验** | 条目名去掉 `..` 与前导斜杠；清单名预留防撞；cwd 外文件统一 `_external/` |
-| 🗂️ **归档校验** | `realpath` 确认父目录仍在归档根内，符号链接穿越记 `unsafe-path`；拒绝 `archiveDir == cwd` |
+| 🗂️ **归档校验** | `realpath` 确认父目录仍在归档根内，符号链接穿越记 `unsafe-path`；拒绝 `archiveDir == cwd`；批次清理只删 `runs/` 下符合时间命名的普通目录 |
 | 📏 **硬上限** | 单文件 64 MB、打包总量 512 MB、800 个文件、请求体 1 MB，均可配置 |
 | 🚫 **失败不静默** | 超限 / 不安全 / 复制失败会进 `failed`，面板显示成功与失败数 |
 
@@ -310,6 +339,7 @@ session/event
 | 项目 | 支持范围 |
 |---|---|
 | DSH | `>= 0.2.0-rc.2` |
+| 原生预览 | 需要 DSH `>= 0.2.1` 的 Document Preview 与 `sidebarRight.openResource()`；低版本自动回退普通预览 |
 | Node | `^22.19 || >=24` |
 | 平台 | macOS / Windows / Linux（CI 三平台 × Node 22/24） |
 | 构建 | 无；`lib/client.js` 原样加载 |
@@ -325,9 +355,9 @@ session/event
 | 差异只在 Host 存活期间可看 | `workspace-changes` 把对比留在内存，重启后只剩文件名 |
 | 差异依赖内核能力 | 宿主没有 `workspaceChanges.diff()` 时面板只给提示 |
 | 长 diff 截断 | `/diff` 最多 1200 行，面板每条 hunk 最多铺 300 行 |
-| 归档不自动清理 | 默认在 `$DSH_HOME` 下，不自动同步网盘；请自行整理 |
-| 预览受浏览器能力限制 | PDF / 图片 / 文本 / 常见源码内联；HTML/SVG 沙箱；docx/xlsx 下载 |
-| 大列表无虚拟滚动 | 一次渲染全部行；搜索是子串匹配，没有排序 |
+| 归档不自动清理 | 默认在 `$DSH_HOME` 下不清理；需要保留策略时设置 `archiveKeep` |
+| 预览受浏览器能力限制 | PDF / 图片 / 文本 / 常见源码内联；HTML/SVG 沙箱；Office 走 DSH 原生预览，cwd 外文件仍只能下载 |
+| 大列表分批渲染 | 先铺 200 行、点「显示更多」追加；还没有真正的窗口化；搜索是子串匹配 |
 | 点文件不自动收集 | `.env` 等需要 `present` 显式声明 |
 
 ### ❓ 常见问题
@@ -347,7 +377,7 @@ session/event
 <details>
 <summary><b>为什么 docx / xlsx 点预览变成下载？</b></summary>
 
-浏览器原生不渲染 Office。鱼篓按附件返回，交给系统应用打开；DSH 自带的文档预览更适合这类文件，欢迎 PR 接入。
+浏览器原生不渲染 Office。点行右侧的「原生」，鱼篓会把文件交给 DSH 自带的 Document Preview，在右侧栏里按 PDF 渲染；只有 cwd 外文件或禁用预览插件时才会回退成附件下载。
 </details>
 
 <details>
@@ -366,7 +396,7 @@ npm pack --dry-run --cache="$(mktemp -d)"
 
 ```sh
 npm install
-npm test        # 60 项：扫描 / 合并 / 改动元数据 / 流式 zip / Range / HTTP 栅栏 / 差异裁剪 / 插件装载
+npm test        # 65 项：扫描 / 合并 / 改动元数据 / 流式 zip / Range / HTTP 栅栏 / 差异裁剪 / 原生地址 / 归档保留 / 插件装载
 npm run check   # 契约自检：包结构、patch、client.inject、locale meta、icon、依赖纪律
 npm run verify  # check + test
 ```
@@ -402,9 +432,8 @@ dsh-whale-catch/
 
 - 🌉 跨会话视图：把所有会话的产物汇总成一个总台账。
 - 💾 持久化 `present` 描述与轮次，Host 重启后仍可读。
-- 📄 接入 DSH 的 Document Preview，Office 文档不再只能下载。
-- 🧹 归档清理策略（按日期 / 按项目 / 保留 N 份）。
-- ⚡ 大列表虚拟滚动与排序。
+- 🧹 归档清理的 dry-run，以及按日期 / 按项目的整理视图（`archiveKeep` 已支持按批保留）。
+- ⚡ 大列表真正的窗口化（当前是 200 行分批 + 「显示更多」）。
 - 🧪 客户端 Panel 的真实渲染测试、`tsc --checkJs` / lint。
 
 <a id="contributing"></a>

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { Basket, displayPath } from '../lib/basket.js'
+import { Basket, displayPath, nativePreviewAddress } from '../lib/basket.js'
 
 async function tempDir() {
   return fs.mkdtemp(path.join(os.tmpdir(), 'whale-basket-'))
@@ -181,5 +181,59 @@ test('同一文件再次改动：行数与 seq/index 取最新一次', async () 
     assert.deepEqual(basket.resolveChange('notes.md'), { path: file, seq: 11, index: 0 })
   } finally {
     await fs.rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('nativePreviewAddress：cwd 内逐段编码，cwd 外与非法输入返回 null', async () => {
+  const dir = await tempDir()
+  const outside = await tempDir()
+  try {
+    const session = 'sess-1'
+    assert.equal(
+      nativePreviewAddress(session, dir, path.join(dir, 'a b', '报告#1.docx')),
+      'dsh-resource://file/session/sess-1/a%20b/%E6%8A%A5%E5%91%8A%231.docx',
+    )
+    // 名字以两个点开头但仍在 cwd 内，不该被 ".." 前缀误判。
+    assert.equal(
+      nativePreviewAddress(session, dir, path.join(dir, '..foo.txt')),
+      'dsh-resource://file/session/sess-1/..foo.txt',
+    )
+    assert.equal(nativePreviewAddress(session, dir, path.join(outside, 'x.txt')), null)
+    assert.equal(nativePreviewAddress(session, dir, dir), null)
+    assert.equal(nativePreviewAddress('', dir, path.join(dir, 'x.txt')), null)
+    assert.equal(nativePreviewAddress(session, '', path.join(dir, 'x.txt')), null)
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+    await fs.rm(outside, { recursive: true, force: true })
+  }
+})
+
+test('快照里的 native 字段：cwd 内文件有地址，cwd 外与已删除为 null', async () => {
+  const dir = await tempDir()
+  const outside = await tempDir()
+  try {
+    const inside = path.join(dir, '交付 报告.docx')
+    const external = path.join(outside, '外部.pdf')
+    await fs.writeFile(inside, 'docx')
+    await fs.writeFile(external, 'pdf')
+
+    const basket = new Basket({ sessionId: 's9', cwd: dir, sinceMs: 0 })
+    basket.addScan({ files: [{ path: inside, rel: '交付 报告.docx', name: '交付 报告.docx', size: 4, mtimeMs: Date.now() }], truncated: false, visited: 1, scannedAt: Date.now() })
+    basket.addPresented([{ path: external }], 1)
+
+    let snapshot = await basket.snapshot()
+    const file = snapshot.files.find((entry) => entry.path === inside)
+    assert.equal(file.native, 'dsh-resource://file/session/s9/' + encodeURIComponent('交付 报告.docx'))
+    const externalFile = snapshot.files.find((entry) => entry.path === external)
+    assert.equal(externalFile.native, null)
+
+    await fs.rm(inside)
+    snapshot = await basket.snapshot()
+    const gone = snapshot.files.find((entry) => entry.path === inside)
+    assert.equal(gone.missing, true)
+    assert.equal(gone.native, null)
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+    await fs.rm(outside, { recursive: true, force: true })
   }
 })

@@ -26,6 +26,7 @@ test('Config 接受空对象并给出默认值（profile 行没写 config 也不
   assert.equal(normalized.maxFileBytes, 64 * 1024 * 1024)
   assert.equal(normalized.maxZipBytes, 512 * 1024 * 1024)
   assert.equal(normalized.maxBodyBytes, 1024 * 1024)
+  assert.equal(normalized.archiveKeep, 0, '默认不启用批次目录与清理')
   assert.deepEqual(normalized.allowHosts, [])
   assert.ok(normalized.archiveDir.endsWith(path.join('whale-catch', 'archive')))
 })
@@ -40,6 +41,7 @@ test('normalizeConfig 把越界与脏值夹回安全区间', () => {
     lookbackMinutes: 0,
     maxZipBytes: 1,
     maxBodyBytes: 99999999,
+    archiveKeep: 9999,
     allowHosts: [' NAS.Local ', '', 42],
   })
   assert.equal(normalized.archiveDir, path.resolve('/tmp/鱼篓'))
@@ -50,6 +52,8 @@ test('normalizeConfig 把越界与脏值夹回安全区间', () => {
   assert.equal(normalized.lookbackMinutes, 720)
   assert.equal(normalized.maxZipBytes, 512 * 1024 * 1024, '过小的打包上限回落到默认值')
   assert.equal(normalized.maxBodyBytes, 16 * 1024 * 1024, '请求体上限夹到 16 MB')
+  assert.equal(normalized.archiveKeep, 1000, '批次保留数夹到上限')
+  assert.equal(normalizeConfig({ archiveKeep: -1 }).archiveKeep, 0, '负数回落到不清理')
   assert.deepEqual(normalized.allowHosts, ['nas.local'])
 })
 

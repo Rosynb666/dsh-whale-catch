@@ -112,15 +112,17 @@ npm run verify
 ```
 
 - [ ] `npm run check` 全绿（包结构 / patch / client.inject / meta / icon / 依赖纪律）
-- [ ] `npm test` 全绿（60 项）
+- [ ] `npm test` 全绿（65 项）
 - [ ] npm 发布路径可用：npm 包里已绑定 Trusted Publishing，或仓库里有有效的 `NPM_TOKEN` 回落
 - [ ] `npm pack --dry-run` 的文件清单符合预期
-- [ ] 在干净的 profile 里装一次：`dsh plugin --profile desktop add <tarball 或仓库地址>`
+- [ ] 在干净的 profile 里装一次（Desktop 走 设置 → 插件 → 安装，CLI 用 `dsh plugin --profile <profile> add <tarball 或仓库地址>`）
 - [ ] 刷新页面，右侧栏 `+` 能看到「打开深海鱼篓」，点开能列出文件
 - [ ] 勾两个文件打包，解压后路径与内容正确，且包含 `_whale-catch/manifest.json` 与 `交付清单.md`
 - [ ] 点开一条改动文件的「差异」能看到 hunk（`+` / `−` 着色）；扫描进来的文件没有「差异」按钮
-- [ ] 归档一次，确认落在 `$DSH_HOME/whale-catch/archive/<sessionId>/` 下
-- [ ] 卸载后右侧栏入口消失：`dsh plugin --profile desktop remove dsh-whale-catch`
+- [ ] docx / xlsx 点「原生」能在右侧栏打开 DSH Document Preview；禁用预览插件后回退普通预览
+- [ ] 切换排序、点「显示更多」、搜索 / 分组组合工作正常
+- [ ] 归档一次，确认落在 `$DSH_HOME/whale-catch/archive/<sessionId>/` 下；设 `archiveKeep: 2` 后连归档三次只剩两个批次
+- [ ] 卸载后右侧栏入口消失（Desktop：设置 → 插件 → 卸载）
 
 ## 6. 隐私检查（发布前必做）
 

@@ -23,12 +23,14 @@
   GET /basket ──────►│ 首次打开才 scanWorkspace()；之后只读缓存 ──► Basket.snapshot()             │
                      │                        │                                                    │
                      │                        └─ 合并三来源（键 = 绝对路径）──► files[] + totals      │
+                     │                           └─ 每个 cwd 内文件附 native 预览地址                   │
   POST /refresh ────►│ 强制 scanWorkspace()（等后台扫描结束后再扫）                                │
                      │                                                                             │
   GET /diff ────────►│ resolve(path)+resolveChange() 白名单 ──► workspaceChanges.diff(seq, index)   │
                      │                        └─ trimDiff() ──► hunks（1200 行预算）                 │
   POST /zip ────────►│ resolve(path) 白名单 ──► 逐文件读 + sha256 ──► writeZip() 流式写响应（附清单）│
-  POST /archive ────►│ resolve(path) ──► copyFile 到 archiveDir/<sessionId>/…；失败进 failed      │
+  POST /archive ────►│ archiveKeep=0 ? <archiveDir>/<sessionId>/…                                  │
+                     │               : <archiveDir>/<sessionId>/runs/<stamp>/… 并清理旧批次          │
   GET  /file ───────►│ resolve(path) ──► Range / ETag ──► createReadStream                       │
                      └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -54,6 +56,30 @@
 
 所以 `/diff` 只是一层**准入 + 转发 + 裁剪**：路径必须在鱼篓里、条目必须有 `seq + index`，然后原样调 `ctx.workspaceChanges.diff()`；Host 版本没有这个能力就回 `no-diff`，面板降级成一句提示。行数徽章同理——`added` / `deleted` 是内核算好的，不重算。
 
+## 为什么原生预览地址由 Host 生成
+
+0.3.0 让 Office 文档能直接在右侧栏看，但鱼篓自己**不写渲染器**：内核的 Document Preview 早就能把 docx / xlsx / pptx 经 `officeToPdf` 转成 PDF，面板只需要把文件"指"给它。指向的方式是 `dsh-resource://file/session/<sessionId>/<相对路径>` 地址，然后调 `ctx.sidebarRight.openResource()`。
+
+地址放在 Host 的 `Basket.snapshot()` 里生成，而不是让客户端拼字符串，原因有三个：
+
+- **只有 Host 知道权威 cwd**：客户端的 cwd 是从会话快照里"借"来的，Host 的 `Basket.cwd` 才是登记文件时用的那个；
+- **编码只有一处实现**：逐段 `encodeURIComponent`、Windows 反斜杠转 POSIX、`..` 前缀判断（不能误杀 `..foo` 这种文件名）都集中在 `nativePreviewAddress()`，测试直接锁死；
+- **cwd 外文件天然没有地址**：绝对路径虽然地址语法支持 `absolute` scope，但当前 Document Preview 的类型只接受 `session` scope，所以这些文件返回 `native: null`，面板回退 `/file` 预览。以后内核放开 absolute scope，只需要改这一个函数。
+
+客户端只做三件事：判断后缀是不是 Office、在 `sidebarRight` 可用时调 `openResource`、失败时回退普通预览。`sidebarRight` 不做硬性 inject：禁用右侧栏相关插件时鱼篓仍然可用。
+
+## 归档保留策略为什么是可选的
+
+旧布局是 `<archiveDir>/<sessionId>/<相对路径>`，同名文件用 `(2)` 避让——稳定、可预测，但**只增不减**。0.3.0 没有直接改成"每次一个时间戳批次"，因为那会让所有老用户的归档路径一夜之间全部失效；默认 `archiveKeep = 0` 保持原样。
+
+只有显式开启（`> 0`）时才切换到：
+
+```text
+<archiveDir>/<sessionId>/runs/<YYYYMMDD-HHMMSS-mmm>/<相对路径>
+```
+
+清理边界写死：只遍历 `runs` 目录、只删名字匹配批次格式的**普通目录**、不跟随符号链接、当前正在写入的批次永远跳过（防止系统时间回拨把它排到最后删掉），删除失败不改变本次归档结果。批次名固定宽度，字典序即时间序，不需要额外读 stat。
+
 ## 采集时机与性能
 
 - `turn/end` 触发一次延迟 1.2s 的扫描（给写盘留时间），`unref()` 掉，不阻止进程退出。
@@ -70,7 +96,7 @@
 1. `Origin` 与 `Host` 不一致 → 403；`Sec-Fetch-Site: cross-site` → 403；Host 还必须 `localhost`、IP 字面量或 `allowHosts` 里的名字。DNS rebinding 的攻击者只能用域名，因此“Origin 与 Host 同时是 evil.example”也会被挡住；局域网 IP 不受影响，反代域名走 `allowHosts`。
 2. 写操作必须 `application/json`：跨站表单发不出该 content-type；声明它会触发预检，而本路由只接受已声明的写方法与 JSON，预检直接 415。
 3. 路径白名单：`Basket.resolve()` 只认登记表里的绝对路径，`../` 与任意路径在入口就返回 404。`/diff` 还要多过一道 `Basket.resolveChange()`：只有带 `seq + index` 的改动条目可读，扫描/`present` 进来的文件即便在筐里也没有对比可看。
-4. zip 条目名过 `safeEntryName()`（去 `..`、去前导斜杠），清单名预留防撞；归档路径 `resolve` 后校验 `startsWith(root + sep)`，`mkdir` 后再用 `realpath` 确认父目录仍在归档根内，符号链接穿越记 `unsafe-path`；`archiveDir == cwd` 直接拒绝。cwd 外的文件在 zip 与归档里都进 `_external/<文件名>`，不做绝对路径镜像，重名加 `(2)`。
+4. zip 条目名过 `safeEntryName()`（去 `..`、去前导斜杠），清单名预留防撞；归档路径 `resolve` 后校验 `startsWith(root + sep)`，`mkdir` 后再用 `realpath` 确认父目录仍在归档根内，符号链接穿越记 `unsafe-path`；`archiveDir == cwd` 直接拒绝。cwd 外的文件在 zip 与归档里都进 `_external/<文件名>`，不做绝对路径镜像，重名加 `(2)`。开启 `archiveKeep` 后的清理只遍历 `runs/`，只删批次命名的普通目录，符号链接与当前批次跳过。
 5. 归档与 zip 共用单文件上限：超限文件在 zip 里进 `skipped`、在归档里进 `failed`，面板会显示失败数，不再静默成功。
 6. 内联预览的脚本隔离：`text/html`、`image/svg+xml` 这类会执行脚本的文档，`/file` 响应带 `Content-Security-Policy: sandbox`——文档照常渲染，但脚本不执行、源变 opaque，无法反手请求本机接口（0.1.2 及以前是裸奔的）。
 7. 上限：单文件 64 MB、打包总量 512 MB、条目数 800、请求体 1 MB，均可通过配置调整。超限文件被跳过时用 `X-Whale-Catch-Skipped` 回传数量，界面不会「静默少文件」。
@@ -99,10 +125,10 @@
 - `present` 描述的持久化。
 - 差异只在 Host 存活期间可看：内核不持久化对比，重启后旧轮次只剩文件名。
 - 更聪明的类型识别（现在按后缀；Office 文档内部类型没有嗅探）。
-- 归档目录的自动整理策略（按日期/按项目）；也没有清理策略。
-- 预览没有复用 DSH 的 Document Preview，Office 文档目前走浏览器下载。
+- 归档目录的自动整理策略（按日期/按项目/dry-run）；`archiveKeep` 只做了按批保留。
+- cwd 外文件没有原生预览（`absolute` scope 当前不被 Document Preview 接受），仍走 `/file` 下载。
 - 点开头的文件（`.env`、`.gitignore`）有意不扫描，避免把密钥类文件自动收进筐；需要交付时用 `present`。
-- 文件列表一次渲染全部行，没有排序或虚拟列表；搜索只做名称/路径/描述的子串匹配，800 条以上仍会开始变卡。
+- 文件列表按 200 行分批渲染、支持排序，但还没有真正的窗口化；搜索只做名称/路径/描述的子串匹配。
 - zip 的 manifest 会写 cwd（主目录前缀脱敏为 `~`）与会话 id，分享前需要自己留意。
 
 ## 测试策略
@@ -111,5 +137,7 @@
 - **路由**用真实 `node:http` 服务 + `fetch` 打过去，测的是客户端实际会发的请求；覆盖 Range/ETag、cwd 外 zip 路径、归档失败与超大文件跳过。
 - **client bundle** 用假 `window.__ModuleLoader__` + 假 React 装配一遍，断言注册了正确的 tab/slot/locale，并检查中英文字典键集一致。
 - **插件入口**用假 `ctx` 装配，模拟 `deliverables/presented` 事件后真的能从 HTTP 读到文件；并验证 GET /basket 只读缓存、POST /refresh 才重扫。
+- **原生预览地址**：纯函数测中文/空格/`#`、`..foo` 边界、cwd 外与空 session；`Basket.snapshot()` 断言 `native` 字段与删除后置空。
+- **归档保留**：真实 HTTP 连打三次 `/archive`，断言只留最近两批、`pruned` 数量、手工目录不被误删；`archiveKeep = 0` 断言不建 `runs/` 且响应没有 `pruned`。
 - **差异**：`trimDiff` 用纯函数测预算与行数重算；`/diff` 用真实 HTTP 测裁剪、无能力降级与超时中止；插件入口测 `seq + index` 真的透传到 `workspaceChanges.diff()`。
 - **zip** 用手写解析 + Python `zipfile` 交叉验证（macOS 自带 unzip 对 UTF-8 条目名的落盘行为不可靠，所以不用它验中文名）；流式写入器用同一套解析验证，已压缩格式断言走 STORE。

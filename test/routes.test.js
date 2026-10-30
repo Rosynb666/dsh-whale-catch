@@ -629,3 +629,93 @@ test('archive 不跟随归档目录里的符号链接', async (t) => {
   assert.equal(payload.value.failed[0].reason, 'unsafe-path')
   assert.equal(await fs.access(path.join(outside, 'file.txt')).then(() => true, () => false), false)
 })
+
+test('archiveKeep = 0 保持旧布局：不建 runs 目录、不返回 pruned', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const server = await serve(await makeStore(dir))
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  const payload = await fetch(`${server.base}archive`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'session-test', paths: [] }),
+  }).then((response) => response.json())
+
+  assert.equal(payload.ok, true)
+  assert.equal(payload.value.pruned, undefined)
+  assert.equal(await fs.access(path.join(dir, '_archive', 'session-test', 'runs')).then(() => true, () => false), false)
+  assert.equal(await fs.readFile(path.join(dir, '_archive', 'session-test', '报告.docx'), 'utf8'), 'docx')
+})
+
+test('archiveKeep = 2：批次目录只留最近两批，非批次目录不碰', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const server = await serve(await makeStore(dir), { archiveKeep: 2 })
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  const archiveOnce = () => fetch(`${server.base}archive`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'session-test', paths: [] }),
+  }).then((response) => response.json())
+
+  const runsDir = path.join(dir, '_archive', 'session-test', 'runs')
+  const first = await archiveOnce()
+  assert.equal(first.ok, true)
+  assert.equal(first.value.pruned.length, 0)
+  assert.ok(first.value.dir.startsWith(runsDir + path.sep), '批次目录应在 runs 下')
+
+  // 不是批次命名的目录不归清理逻辑管
+  const manual = path.join(runsDir, 'keep-me')
+  await fs.mkdir(manual, { recursive: true })
+
+  await new Promise((resolve) => setTimeout(resolve, 5))
+  const second = await archiveOnce()
+  assert.equal(second.value.pruned.length, 0, '两批以内不清理')
+
+  await new Promise((resolve) => setTimeout(resolve, 5))
+  const third = await archiveOnce()
+  assert.equal(third.value.pruned.length, 1, '第三次归档清掉最旧的一批')
+
+  const names = await fs.readdir(runsDir)
+  assert.ok(names.includes('keep-me'), '手工目录不能被顺手删掉')
+  const batches = names.filter((name) => name !== 'keep-me').sort()
+  assert.deepEqual(batches, [path.basename(second.value.dir), path.basename(third.value.dir)].sort())
+  for (const name of batches) {
+    assert.equal(await fs.readFile(path.join(runsDir, name, '报告.docx'), 'utf8'), 'docx')
+  }
+})
+
+test('archiveKeep：runs 被换成指向外部的符号链接时拒绝归档', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-routes-'))
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-runs-link-'))
+  const server = await serve(await makeStore(dir), { archiveKeep: 1 })
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+    await fs.rm(outside, { recursive: true, force: true })
+  })
+
+  const sessionRoot = path.join(dir, '_archive', 'session-test')
+  await fs.mkdir(sessionRoot, { recursive: true })
+  try {
+    await fs.symlink(outside, path.join(sessionRoot, 'runs'), 'dir')
+  } catch {
+    t.skip('当前平台不允许创建目录符号链接')
+    return
+  }
+
+  const response = await fetch(`${server.base}archive`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'session-test', paths: [] }),
+  })
+  assert.equal(response.status, 400)
+  assert.equal((await response.json()).error.code, 'unsafe-path')
+  assert.deepEqual(await fs.readdir(outside), [], '不能往归档根之外写任何东西')
+})

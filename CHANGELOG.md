@@ -2,6 +2,25 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.3.0] - 2026-10-30
+
+### 新增
+
+- **Office 原生预览**：`/basket` 快照为 cwd 内文件生成 `native` 地址（`dsh-resource://file/session/<sessionId>/<相对路径>`，逐段 `encodeURIComponent`）；面板对 docx / xlsx / pptx 增加「原生」按钮，调用 `ctx.sidebarRight.openResource()` 交给 DSH Document Preview，转换由内核 `officeToPdf` 完成。禁用预览插件、地址被拒或 cwd 外文件时回退普通预览，不新增任何运行时依赖。
+- **排序**：最近修改 / 名称 / 体积 / 类型四档；已删除条目永远沉底，切换排序不影响勾选与展开的差异。
+- **分批渲染**：列表先铺 200 行，点「显示更多」继续追加，800 条也不再一次渲染；筛选、搜索、排序、分组切换时重置回 200 行。
+- **归档保留策略**：新配置 `archiveKeep`（默认 `0` = 关闭，行为与 0.2.2 完全一致）。`> 0` 时每次归档写入 `<archiveDir>/<sessionId>/runs/<YYYYMMDD-HHMMSS-mmm>/`，只保留最近 N 批；`/archive` 响应新增 `pruned` 数组。
+- 测试 60 → 65：原生地址编码 / 快照字段、`archiveKeep` 默认与清理边界、配置夹取。
+
+### 安全
+
+- 归档清理只遍历 `<archiveDir>/<sessionId>/runs`，只删除名字匹配批次格式的普通目录；符号链接、手工目录与当前正在写入的批次一律跳过，删除失败不影响本次归档结果。
+- 原生预览地址由 Host 统一生成，客户端不拼字符串；cwd 外文件不生成地址，避免猜测路径。
+
+### 文档
+
+- README / README.en / 架构文档同步 0.3.0 的功能、配置项与限制；路线图移除已完成的 Document Preview 与排序条目。
+
 ## [0.2.2] - 2026-10-28
 
 ### 性能

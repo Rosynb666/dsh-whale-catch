@@ -22,6 +22,8 @@
       #   maxZipBytes: 536870912
       #   # 请求体上限（字节）
       #   maxBodyBytes: 1048576
+      #   # 归档保留批次数；0 = 不启用批次目录与清理
+      #   archiveKeep: 0
       #   # 最多收录多少个文件
       #   maxFiles: 800
       #   # 目录遍历深度

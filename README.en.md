@@ -80,7 +80,7 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 | Capability | What you get |
 |---|---|
 | 🧺 **Automatic collection** | `present` declarations, `workspace/changes` edits, and a cwd scan merged by absolute path |
-| 👀 **In-place preview** | images / PDF / text / common source files open in a new tab; HTML / SVG render in a CSP sandbox; Office downloads |
+| 👀 **In-place preview** | images / PDF / text / common source files open in a new tab; HTML / SVG render in a CSP sandbox; docx / xlsx / pptx open in the native DSH preview |
 | 🔍 **Inline diff** | unified diff for kernel-recorded changes: `+` / `−` colours, `@@` headers, new / deleted / binary / oversized notes |
 | 🧭 **Search & grouping** | search by name / path / description; kind chips; group by “Turn N”; copy as Markdown |
 | 📦 **Zip** | selected or all files; `manifest.json` + a human-readable checklist inside; cwd-outside files under `_external/` |
@@ -89,6 +89,13 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 | 🌗 **Theme-aware** | only `--dsw-alias-*` / `--dsw-static-*` tokens; dark / light follows DSH |
 | 🌐 **Bilingual** | Chinese and English dictionaries; localised error codes |
 | ⚡ **Zero build** | `lib/client.js` is handed to `__ModuleLoader__` as-is |
+
+### 🎁 What's new in 0.3.0
+
+- 📄 **Native Office preview**: click **Native** on a docx / xlsx / pptx to open it in DSH's Document Preview; the kernel's `officeToPdf` does the conversion, and the panel falls back to the normal preview when the preview plugin is disabled or the file lives outside cwd.
+- ↕️ **Sorting**: modified / name / size / kind; missing files always sink to the bottom.
+- 🪟 **Batched rendering**: the first 200 rows render immediately, **Show more** appends the rest — 800 entries no longer render at once.
+- 🧹 **Optional archive retention**: with `archiveKeep: 2`, every archive run gets its own batch directory and only the newest two are kept; the default `0` keeps the old layout unchanged.
 
 ### 🎁 What's new in 0.2.2
 
@@ -110,15 +117,18 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 
 ### 1. Install
 
+On Desktop use the in-app **Settings → Plugins → Install** and paste one of these (the `desktop` profile is owned by the Electron app, so `dsh plugin --profile desktop add` is refused):
+
+```text
+github:Rosynb666/dsh-whale-catch     # latest main from GitHub
+dsh-whale-catch@0.3.0                # a pinned npm version
+```
+
+Only self-managed profiles use the CLI:
+
 ```sh
-# from GitHub
-dsh plugin --profile desktop add github:Rosynb666/dsh-whale-catch
-
-# from npm (recommended)
-dsh plugin --profile desktop add dsh-whale-catch
-
-# local development
-dsh plugin --profile desktop add /absolute/path/to/dsh-whale-catch
+dsh plugin --profile <profile> add github:Rosynb666/dsh-whale-catch
+dsh plugin --profile <profile> add dsh-whale-catch@0.3.0
 ```
 
 ### 2. Open the panel
@@ -131,8 +141,10 @@ Let the agent produce something, or click **Refresh** once. Select files → **Z
 
 ### Uninstall
 
+Desktop: **Settings → Plugins → Uninstall**. For self-managed profiles:
+
 ```sh
-dsh plugin --profile desktop remove dsh-whale-catch
+dsh plugin --profile <profile> remove dsh-whale-catch
 ```
 
 ---
@@ -171,12 +183,15 @@ A narrow sidebar layout (illustrative; actual width follows the sidebar):
 | 🏷️ **Kind chips** | all / docs / sheets / slides / images / code / archives / media / other |
 | 🔎 **Search** | case-insensitive substring over name, relative path and description |
 | 🔀 **Group by turn** | sections per “Turn N”, newest first, unmarked files last |
+| ↕️ **Sort** | modified / name / size / kind; re-renders immediately |
 | 📋 **Copy list** | export the selection (or current filter) as Markdown for a report or issue |
 | ⧉ **Copy path** | copy the absolute path |
-| 👁️ **Open** | open the original file in a new tab; images / PDF / text / source inline, Office downloaded |
+| 👁️ **Open** | open the original file in a new tab; images / PDF / text / source inline |
+| 📄 **Native** | hand docx / xlsx / pptx to DSH's Document Preview in the right sidebar |
 | 🧾 **Diff** | expand the kernel's unified diff; only entries with a `workspace/changes` record have one |
 | 📦 **Zip** | download a zip with the delivery manifest |
 | 🗂️ **Archive** | copy into the configured archive directory; shows “N archived / M failed” |
+| 🔎 **Show more** | with more than 200 rows, starts with 200 and appends on demand |
 
 ### 📦 What the zip looks like
 
@@ -200,6 +215,18 @@ $DSH_HOME/whale-catch/archive/
     ├── report.docx
     ├── assets/chart.png
     └── _external/external-delivery.pdf
+```
+
+With `archiveKeep` enabled, each run gets its own batch directory and old batches are pruned:
+
+```text
+$DSH_HOME/whale-catch/archive/
+└── <session-id>/
+    └── runs/
+        ├── 20261030-153012-120/
+        │   └── report.docx
+        └── 20261030-160145-004/   # keep newest N batches
+            └── report.docx
 ```
 
 <a id="how"></a>
@@ -261,6 +288,7 @@ Override in your own profile patch layer — do **not** edit the bundled `cordis
     maxFileBytes: 67108864
     maxZipBytes: 536870912
     maxBodyBytes: 1048576
+    archiveKeep: 0                        # batch retention; 0 disables batch dirs and pruning
     lookbackMinutes: 720
     allowHosts: []                        # extra allowed Host names; localhost / IP literals always pass
 ```
@@ -274,6 +302,7 @@ Override in your own profile patch layer — do **not** edit the bundled `cordis
 | `maxFileBytes` | `67108864` | per-file limit; shared by zip and archive |
 | `maxZipBytes` | `536870912` | total zip limit; also used for zip preflight |
 | `maxBodyBytes` | `1048576` | JSON request-body limit |
+| `archiveKeep` | `0` | archive batch retention; `0` keeps the old layout, `> 0` writes `runs/<timestamp>/` and prunes old batches |
 | `lookbackMinutes` | `720` | fallback window when session creation time is unavailable |
 | `allowHosts` | `[]` | extra allowed Host names (reverse proxies); IP literals and `localhost` always pass |
 
@@ -292,7 +321,7 @@ The routes live on the loopback Host. The threat model is **a third-party page i
 | 🧾 **JSON writes** | cross-site forms cannot send `application/json`; declaring it triggers a preflight that this route rejects with 415 |
 | 🧪 **Inline sandbox** | HTML / SVG responses carry `Content-Security-Policy: sandbox`: styles still render, scripts do not run, origin becomes opaque |
 | 📦 **Zip checks** | entry names drop `..` and leading slashes; manifest names are reserved; cwd-outside files go to `_external/` |
-| 🗂️ **Archive checks** | `realpath` keeps the parent under the archive root; symlink escapes become `unsafe-path`; `archiveDir == cwd` is rejected |
+| 🗂️ **Archive checks** | `realpath` keeps the parent under the archive root; symlink escapes become `unsafe-path`; `archiveDir == cwd` is rejected; pruning only removes time-named directories under `runs/` |
 | 📏 **Hard caps** | 64 MB per file, 512 MB per zip, 800 files, 1 MB request body — all configurable |
 | 🚫 **Visible failures** | oversized / unsafe / copy failures land in `failed`; the panel reports both counts |
 
@@ -310,6 +339,7 @@ The routes live on the loopback Host. The threat model is **a third-party page i
 | Item | Range |
 |---|---|
 | DSH | `>= 0.2.0-rc.2` |
+| Native preview | needs DSH `>= 0.2.1` (Document Preview + `sidebarRight.openResource()`); older versions fall back to the normal preview |
 | Node | `^22.19 || >=24` |
 | Platforms | macOS / Windows / Linux (CI: three platforms × Node 22/24) |
 | Build | none; `lib/client.js` loads as-is |
@@ -325,9 +355,9 @@ The routes live on the loopback Host. The threat model is **a third-party page i
 | Diffs depend on Host lifetime | `workspace-changes` keeps comparisons in memory; after a restart old turns have no diff |
 | Diffs depend on kernel capability | a Host without `workspaceChanges.diff()` shows the “no readable diff” note |
 | Long diffs truncated | `/diff` returns at most 1200 lines; the panel renders at most 300 lines per hunk |
-| No archive cleanup | the archive lives under `$DSH_HOME`; it does not sync to a cloud drive |
-| Browser-bound preview | PDF / images / text / common source inline; HTML/SVG sandboxed; docx/xlsx download |
-| Large lists | all rows render at once; search is substring only, no sorting / virtual list |
+| No archive cleanup by default | the archive lives under `$DSH_HOME` and is not pruned; set `archiveKeep` to retain batches |
+| Browser-bound preview | PDF / images / text / common source inline; HTML/SVG sandboxed; Office opens in the native DSH preview, files outside cwd still download |
+| Large lists | the first 200 rows render, the rest via **Show more**; no true virtualization yet; search is substring only |
 | Dot-files not auto-collected | `.env` and friends need an explicit `present` |
 
 ### ❓ FAQ
@@ -347,7 +377,7 @@ Only files with a `workspace/changes` record have before/after snapshots. Scanne
 <details>
 <summary><b>Why does docx / xlsx download instead of preview?</b></summary>
 
-Browsers do not render Office natively. Whale Catch serves them as attachments for the system app; DSH's own document preview is a better fit for these files.
+Browsers do not render Office natively. Click **Native** on the row and Whale Catch hands the file to DSH's Document Preview, which renders it as a PDF in the right sidebar; only files outside cwd, or a disabled preview plugin, fall back to a download.
 </details>
 
 <details>
@@ -366,7 +396,7 @@ npm pack --dry-run --cache="$(mktemp -d)"
 
 ```sh
 npm install
-npm test        # 60 tests: scan / merge / change metadata / streaming zip / Range / HTTP fence / diff trim / plugin load
+npm test        # 65 tests: scan / merge / change metadata / streaming zip / Range / HTTP fence / diff trim / native addresses / archive retention / plugin load
 npm run check   # contract self-check: package shape, patch, client.inject, locale meta, icon, deps
 npm run verify  # check + test
 ```
@@ -402,9 +432,8 @@ dsh-whale-catch/
 
 - 🌉 Cross-session view: one ledger for every session's deliverables.
 - 💾 Persist `present` descriptions and turns across Host restarts.
-- 📄 Reuse DSH's Document Preview instead of downloading Office files.
-- 🧹 Archive retention / cleanup (by date, project or count).
-- ⚡ Virtual scrolling and sorting for large lists.
+- 🧹 Archive cleanup dry-runs, plus date / project views (`archiveKeep` already retains batches).
+- ⚡ True virtualization for large lists (currently 200-row batches with **Show more**).
 - 🧪 Real client-render tests, `tsc --checkJs` and lint.
 
 <a id="contributing"></a>
