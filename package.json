@@ -1,7 +1,7 @@
 {
   "name": "dsh-whale-catch",
   "version": "0.3.2",
-  "description": "深海鱼篓：不用 agent 登记，自动收进本次会话产出的文件，右侧栏预览、看改动差异、打包 zip、归档。Zero-registration deliverable basket for DeepSeek Harness.",
+  "description": "深海鱼篓：零登记收进本次会话产出的文件——右侧栏用 DSH Document Preview 预览、看行内差异、搜索排序、一键打包 zip 与归档。Zero-registration deliverable basket for DeepSeek Harness.",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -38,6 +38,10 @@
     "deliverables",
     "download",
     "zip",
+    "preview",
+    "diff",
+    "document-preview",
+    "archive",
     "sidebar",
     "whale"
   ],

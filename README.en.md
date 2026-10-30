@@ -4,7 +4,7 @@
 
 ### dsh-whale-catch · every deliverable from this session swims into the basket
 
-**Collect automatically · preview in one place · read the diff in place · zip / archive in one click**
+**Collect automatically · preview in one place · diff in place · search & sort · zip / archive in one click**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/release.yml?style=flat-square&label=Release)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml)

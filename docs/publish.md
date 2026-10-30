@@ -101,7 +101,7 @@ npm pack --dry-run --cache="$(mktemp -d)"
 
 ## 4. 让社区能找到
 
-- 给仓库加 topics：`dsh` `dsh-plugin` `deepseek-harness` `cordis` `deliverables` `zip`。
+- 给仓库加 topics：`dsh` `dsh-plugin` `deepseek-harness` `cordis` `deliverables` `zip` `preview` `diff` `document-preview` `sidebar`。
 - 向 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 提 PR 收录（按它的模板填：名称、一句话简介、安装命令、分类 `tools` / `session`）。
 - 在 README 里贴一张真实截图（把右侧栏鱼篓展开截下来就行），比任何徽章都有说服力。
 

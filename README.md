@@ -4,7 +4,7 @@
 
 ### dsh-whale-catch · 让本场会话的交付物自己游进篮子
 
-**自动收集 · 一处预览 · 就地看差异 · 一键打包 / 归档**
+**自动收集 · 一处预览 · 就地看差异 · 搜索排序 · 一键打包 / 归档**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/release.yml?style=flat-square&label=Release)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml)
