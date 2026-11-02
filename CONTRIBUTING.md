@@ -27,3 +27,20 @@ npm run verify  # 两个都跑（发布前必须）
 
 Conventional Commits 风格（`feat:` / `fix:` / `docs:` / `ci:`），一次提交只做一件事。
 发版走 tag + Release workflow，不要手动改已发布的 tag。
+
+## 第一次提 PR
+
+1. `git clone https://github.com/Rosynb666/dsh-whale-catch.git && cd dsh-whale-catch`
+2. `npm ci`
+3. 从 `main` 切分支：`git switch -c fix/说明你改了什么`
+4. 改完本地自检：`npm run verify`（= `npm run check` + `npm test`）
+5. 提交（规范见上一节），推分支后开 PR
+6. PR 描述按 `.github/pull_request_template.md` 填，尤其是「怎么验证」——CI 只证明测试过了，不证明问题真的被修好
+7. 等 CI 三平台（macOS / Windows / Linux × Node 22、24）全绿再合并
+
+几个容易漏的点：
+
+- 改动带上了新测试，README「开发与测试」与 `docs/publish.md` 里的测试数要一起改；契约自检不校验这个数字，漏了会静默失配。
+- 不要手动改版本号，也不要在 PR 里动已发布的 tag；发版流程见 `docs/publish.md`。
+- 碰 `/file`、`/zip`、`/archive`、`/diff` 的改动，PR 里要写清威胁模型与降级行为——这几条路由直接读用户磁盘，评审重点在边界而不是功能。
+- 客户端不引入构建依赖；改 `lib/client.js` 后没有构建步骤，重装插件即可看到效果。
