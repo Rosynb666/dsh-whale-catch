@@ -6,6 +6,7 @@ on:
       - 'v*'
   # 手动补发：Actions → Release → Run workflow → 填 tag（例如 v0.1.3）。
   # 标签已经推了但发布没成功时，不用再打一个空版本。
+  # 也用于补附件：tag 下版本已在 npm 上时自动跳过 publish，只重建 Release 并附 .tgz。
   workflow_dispatch:
     inputs:
       tag:
@@ -52,6 +53,20 @@ jobs:
       - name: 打包预检
         run: npm pack --dry-run
 
+      # 补发场景：版本早就发到 npm 了，只是 Release 缺 .tgz。
+      # 先问一句 registry，已有版本就跳过 publish，只补附件，避免 403 把整个 job 打挂。
+      - name: 检查 npm 是否已有该版本
+        id: npm-version
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "dsh-whale-catch@$VERSION" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::npm 上已有 dsh-whale-catch@$VERSION，跳过发布，只补 Release 附件"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 选择 npm dist-tag
         id: dist-tag
         shell: bash
@@ -65,17 +80,19 @@ jobs:
 
       # Trusted Publishing 需要 npm >= 11.5.2；runner 自带的版本偏旧。
       - name: 升级 npm（OIDC 需要 11.5.2+）
+        if: steps.npm-version.outputs.exists != 'true'
         run: npm install -g 'npm@^11.5.2'
 
       # 优先走 Trusted Publishing：不读任何 secret，provenance 由 OIDC 签发。
       # 没在 npm 包设置里绑 GitHub 仓库时会失败，所以下一步留了 token 回落。
       - name: 发布到 npm（Trusted Publishing / OIDC）
         id: npm-oidc
+        if: steps.npm-version.outputs.exists != 'true'
         continue-on-error: true
         run: npm publish --provenance --access public --tag "${{ steps.dist-tag.outputs.tag }}"
 
       - name: 回落：用 NPM_TOKEN 发布
-        if: steps.npm-oidc.outcome == 'failure'
+        if: steps.npm-version.outputs.exists != 'true' && steps.npm-oidc.outcome == 'failure'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
