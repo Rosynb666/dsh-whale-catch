@@ -106,7 +106,7 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 
 - 🧾 **From basket to delivery workbench**: archives now write `manifest.json` plus a local ledger, so batches survive restarts and session switches; `present` descriptions survive too.
 - 🩺 **Delivery check**: missing / oversized / empty / sensitive / dirty-since-archive issues before you package; content hits report only the pattern name and line number.
-- 🧾 **Receipts**: self-contained HTML / Markdown with sha256, printable and verifiable.
+- 🧾 **Receipts**: self-contained HTML / Markdown with sha256, printable and checkable; the `/ledger/verify` API recomputes digests.
 - 🔁 **Version chain and archive diff**: every recorded turn is selectable, and the current file can be compared with the archived copy.
 - ♻️ **Restore**: `skip` / `rename` / `overwrite`, dry-run first, backup before overwrite, cwd-only writes.
 - 🔎 **Content search**: text files in the basket only, hit lines jump to preview; no index, no disk writes, no regex.
