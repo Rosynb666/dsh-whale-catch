@@ -1,43 +1,33 @@
 <div align="center">
 
-# 🐋 Whale Catch
+<img src="docs/banner.svg" alt="Whale Catch: every deliverable from this session, one basket" width="100%">
 
-### dsh-whale-catch · every deliverable from this session swims into the basket
-
-**Collect automatically · preview & diff · delivery ledger · checks · receipts · restore · content search**
+<br>
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/release.yml?style=flat-square&label=Release)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml)
 [![npm](https://img.shields.io/npm/v/dsh-whale-catch?style=flat-square&color=4c8bf5&label=npm)](https://www.npmjs.com/package/dsh-whale-catch)
 [![downloads](https://img.shields.io/npm/dw/dsh-whale-catch?style=flat-square&color=3c873a&label=downloads)](https://www.npmjs.com/package/dsh-whale-catch)
 [![stars](https://img.shields.io/github/stars/Rosynb666/dsh-whale-catch?style=flat-square&color=f5b301&label=stars)](https://github.com/Rosynb666/dsh-whale-catch/stargazers)
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](https://github.com/Rosynb666/dsh-whale-catch/blob/main/LICENSE)
 [![node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-3c873a?style=flat-square)](#limits)
 [![DSH](https://img.shields.io/badge/DSH-%E2%89%A5%200.2.0--rc.2-4c8bf5?style=flat-square)](#limits)
-[![deps](https://img.shields.io/badge/runtime%20deps-1%20(schemastery)-blue?style=flat-square)](#dev)
 [![build](https://img.shields.io/badge/build%20step-none-brightgreen?style=flat-square)](#dev)
 
-[🚀 Quick start](#install) · [✨ Features](#features) · [⚙️ Configuration](#config) · [🛡️ Security](#security) · [中文](https://github.com/Rosynb666/dsh-whale-catch/blob/main/README.md)
+**Collect automatically · preview & diff · delivery ledger · checks · receipts · restore · content search**
+
+[🚀 Quick start](#install) · [✨ Features](#features) · [🖥️ UI](#ui) · [🛡️ Security](#security) · [中文](https://github.com/Rosynb666/dsh-whale-catch/blob/main/README.md)
 
 </div>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="Whale Catch 0.4.0 panel preview: This session / History, version chain, delivery marks and content search" width="760">
-</p>
+A right-sidebar delivery workbench for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH): it collects the files a session **produced or changed** into one basket, with preview, inline diff, version chain, delivery ledger, delivery checks, receipts, archive restore, content search, zip and copy-as-Markdown.
 
-<p align="center"><sub>🧪 Static 0.4.0 panel preview rendered with the real component in <code>lib/client.js</code> and sample data — not a live DSH screenshot. The This session / History switch, content search, turn picker and delivery marks are all visible; colours follow your theme.</sub></p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/history.png" alt="Whale Catch 0.4.0 history view: archived batches, receipts and restore" width="430">
-</p>
-
-<p align="center"><sub>🧾 History view: every archived batch can be inspected, downloaded as a receipt, or restored; files in the current view can also be compared with their archived copy.</sub></p>
-
-A right-sidebar plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH): it collects the files a session **produced or changed** into one basket, with preview, inline diff, version chain, delivery ledger, delivery checks, receipts, archive restore, content search, zip and copy-as-Markdown.
+> [!TIP]
+> **In one sentence:** it does not change your workflow; it just gives “what did this session actually produce?” a permanent answer.
 
 ## 🧭 Contents
 
 - [🐋 Why Whale Catch](#why)
+- [🆚 Compared with built-in deliverables](#vs)
 - [✨ Features](#features)
 - [🚀 Quick start](#install)
 - [🖥️ UI and interactions](#ui)
@@ -64,7 +54,7 @@ After a few turns in DSH, “where did that file go?” becomes routine:
 
 Whale Catch now covers the whole line: **collect automatically**, **show in one place**, **check before delivery**, **zip / archive / receipt**, and **a history you can revisit and restore**. Changed files expand a unified diff, version turns are selectable, and content search lives in the same sidebar.
 
-> 💡 **In one sentence:** it does not change your workflow; it just gives “what did this session actually produce?” a permanent answer.
+<a id="vs"></a>
 
 ## 🆚 Compared with built-in deliverables
 
@@ -112,31 +102,7 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 - 🔎 **Content search**: text files in the basket only, hit lines jump to preview; no index, no disk writes, no regex.
 - ✅ **Delivery marks**: mark delivered, see progress, persisted in the ledger.
 
-### 🎁 What's new in 0.3.2
-
-- 🪟 **Preview no longer opens a new window**: the Desktop Electron main process denies every `window.open` (only `https:` links are handed to the system browser), which was why the preview button silently did nothing. Preview now goes through DSH Document Preview, so images / PDF / Markdown / text / source / Office all open in the right sidebar.
-- 📍 One preview entry; files outside cwd get an explicit “copy path or archive” hint.
-- 🖼️ Preview image re-rendered from the 0.3.2 panel (sorting + preview action + inline diff).
-
-### 🎁 What's new in 0.3.1
-
-- 🔎 **Unknown extensions are readable too**: `/file` sniffs the first 8 KiB of `.patch` / `.bak` files and returns `text/plain` for text instead of forcing a download.
-
-### 🎁 What's new in 0.3.0
-
-- 📄 **Office documents go to Document Preview**: docx / xlsx / pptx render as PDFs via the kernel's `officeToPdf`; since 0.3.2 they share the single preview entry with every other file.
-- ↕️ **Sorting**: modified / name / size / kind; missing files always sink to the bottom.
-- 🪟 **Batched rendering**: the first 200 rows render immediately, **Show more** appends the rest — 800 entries no longer render at once.
-- 🧹 **Optional archive retention**: with `archiveKeep: 2`, every archive run gets its own batch directory and only the newest two are kept; the default `0` keeps the old layout unchanged.
-
-### 🎁 What's new in 0.2.2
-
-- 🛑 **Polling no longer rescans the disk**: the 5-second poll reads the cache; scans happen on first open, `turn/end`, and explicit Refresh.
-- 🌊 **Streaming zip**: read one file, compress asynchronously, write to the response — no whole-archive buffer.
-- 🎯 **Range / ETag**: PDFs and large files can seek without re-downloading.
-- 🛡️ **Host allowlist**: blocks the DNS-rebinding case where Origin and Host are both the attacker's domain.
-- 🧹 **Archive safety**: `archiveDir == cwd` is rejected, `realpath` stops symlink escapes, failures land in `failed`.
-- 🔎 **Panel search**: filter by name / path / description, together with the kind chips.
+> Per-version notes for 0.3.x / 0.2.x live in [CHANGELOG.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/CHANGELOG.md); the README keeps only the current release.
 
 <a id="install"></a>
 
@@ -185,6 +151,23 @@ dsh plugin --profile <profile> remove dsh-whale-catch
 
 ## 🖥️ UI and interactions
 
+<p align="center">
+  <a href="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png">
+    <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="0.4.0 panel preview: This session / History, version chain, delivery marks and content search" width="360">
+  </a>
+</p>
+<p align="center"><sub>🧪 Static 0.4.0 panel preview; click to enlarge. Colours follow your theme.</sub></p>
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/history.png">
+    <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/history.png" alt="0.4.0 history view: archived batches, receipts and restore" width="340">
+  </a>
+</p>
+<p align="center"><sub>🧾 History view: inspect a batch, download a receipt, or restore it.</sub></p>
+
+<details>
+<summary><b>Text layout</b></summary>
+
 A narrow sidebar layout (illustrative; actual width follows the sidebar):
 
 ```text
@@ -206,6 +189,8 @@ A narrow sidebar layout (illustrative; actual width follows the sidebar):
 │ scanned just now                                   │
 └────────────────────────────────────────────────────┘
 ```
+
+</details>
 
 ### 🎛️ Controls
 
@@ -288,15 +273,23 @@ Whale Catch does not ask the agent to register files. It merges three sources by
 | `changed` | `workspace/changes` + `ctx.workspaceChanges.summary()` / `.diff()` | git snapshots and file-tool edits, with line counts and a unified diff |
 | `scanned` | a cwd scan (`mtime >= session creation`) | anything written by bash / python / build scripts |
 
-```text
-session/event
- ├─ deliverables/presented ──────────────┐
- ├─ workspace/changes ───────────────────┤
- └─ turn/end ──► scan cwd ───────────────┤
-                                        ▼
-                             Basket（merged by absolute path）
-                                        │
-                         GET /basket ───┴──► sidebar panel
+```mermaid
+flowchart LR
+  subgraph E["session events"]
+    direction TB
+    P["deliverables/presented"]
+    W["workspace/changes"]
+    S["turn/end → scan cwd"]
+  end
+
+  B["Basket<br/>merged by absolute path"]
+  API["GET /basket"]
+  UI["sidebar panel"]
+
+  P --> B
+  W --> B
+  S --> B
+  B --> API --> UI
 ```
 
 ### 🧭 Scan boundaries
@@ -346,6 +339,9 @@ Override in your own profile patch layer — do **not** edit the bundled `cordis
     sensitivePatterns: []                 # extra sensitive filename globs
 ```
 
+<details>
+<summary><b>Full configuration reference</b></summary>
+
 | Field | Default | Meaning |
 |---|---|---|
 | `archiveDir` | `$DSH_HOME/whale-catch/archive` | archive root; a leading `~` / `~/` expands |
@@ -364,6 +360,8 @@ Override in your own profile patch layer — do **not** edit the bundled `cordis
 | `searchTimeoutMs` | `3000` | overall content-search budget (ms) |
 | `restoreBackup` | `true` | back up existing files before overwrite |
 | `sensitivePatterns` | `[]` | extra sensitive filename globs (warn only) |
+
+</details>
 
 Hot reload picks it up; no restart needed.
 

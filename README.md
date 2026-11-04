@@ -1,43 +1,33 @@
 <div align="center">
 
-# 🐋 深海鱼篓
+<img src="docs/banner.svg" alt="深海鱼篓 · Whale Catch：本场会话的交付物，自己游进篮子" width="100%">
 
-### dsh-whale-catch · 让本场会话的交付物自己游进篮子
-
-**自动收集 · 就地预览 / 差异 · 交付台账 · 体检 · 回执 · 还原 · 内容搜索**
+<br>
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/release.yml?style=flat-square&label=Release)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml)
 [![npm](https://img.shields.io/npm/v/dsh-whale-catch?style=flat-square&color=4c8bf5&label=npm)](https://www.npmjs.com/package/dsh-whale-catch)
 [![downloads](https://img.shields.io/npm/dw/dsh-whale-catch?style=flat-square&color=3c873a&label=downloads)](https://www.npmjs.com/package/dsh-whale-catch)
 [![stars](https://img.shields.io/github/stars/Rosynb666/dsh-whale-catch?style=flat-square&color=f5b301&label=stars)](https://github.com/Rosynb666/dsh-whale-catch/stargazers)
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](https://github.com/Rosynb666/dsh-whale-catch/blob/main/LICENSE)
 [![node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-3c873a?style=flat-square)](#limits)
 [![DSH](https://img.shields.io/badge/DSH-%E2%89%A5%200.2.0--rc.2-4c8bf5?style=flat-square)](#limits)
-[![deps](https://img.shields.io/badge/runtime%20deps-1%20(schemastery)-blue?style=flat-square)](#dev)
 [![build](https://img.shields.io/badge/build%20step-none-brightgreen?style=flat-square)](#dev)
 
-[🚀 快速开始](#install) · [✨ 功能地图](#features) · [⚙️ 配置](#config) · [🛡️ 安全模型](#security) · [English](https://github.com/Rosynb666/dsh-whale-catch/blob/main/README.en.md)
+**自动收集 · 就地预览 / 差异 · 交付台账 · 体检 · 回执 · 还原 · 内容搜索**
+
+[🚀 30 秒上手](#install) · [✨ 功能地图](#features) · [🖥️ 界面](#ui) · [🛡️ 安全模型](#security) · [English](https://github.com/Rosynb666/dsh-whale-catch/blob/main/README.en.md)
 
 </div>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="深海鱼篓 0.4.0 面板预览：本次 / 历史、版本链、交付勾选与内容搜索" width="760">
-</p>
+给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的右侧栏交付工作台：把一场会话里**产出或改动过的文件**自动收进「鱼篓」，支持预览、行内差异、版本链、交付台账、交付体检、回执、归档还原、内容搜索、打包 zip 与复制清单。
 
-<p align="center"><sub>🧪 0.4.0 面板静态预览：用 <code>lib/client.js</code> 里真实的面板组件 + 示例数据渲染，不是 DSH 实机截图。顶部「本次 / 历史」、内容搜索、轮次下拉、交付勾选都在图里；实际配色跟随你的主题。</sub></p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/history.png" alt="深海鱼篓 0.4.0 历史视图：归档批次、回执与还原" width="430">
-</p>
-
-<p align="center"><sub>🧾 历史视图：每个归档批次都能看详情、下回执、还原；当前视图里的文件还能和归档版对比。</sub></p>
-
-给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的右侧栏插件：把一场会话里**产出或改动过的文件**汇总到「鱼篓」里，支持预览、行内差异、版本链、交付台账、交付体检、回执、归档还原、内容搜索、打包 zip 与复制清单。
+> [!TIP]
+> **一句话：** 不改变你的工作流，只给「这一场会话到底产出了什么」一个常驻的答案。
 
 ## 🧭 目录
 
 - [🐋 为什么需要它](#why)
+- [🆚 和内核产出物的区别](#vs)
 - [✨ 功能地图](#features)
 - [🚀 30 秒上手](#install)
 - [🖥️ 界面与交互](#ui)
@@ -65,7 +55,7 @@
 
 鱼篓现在管一条线：**自动收**、**一处看**、**交付前体检**、**打包 / 归档 / 回执**、**历史可回看可还原**。改过的文件能就地展开 unified diff、按轮次翻版本、搜正文，都在同一个侧栏里完成。
 
-> 💡 **一句话：** 不改变你的工作流，只给「这一场会话到底产出了什么」一个常驻的答案。
+<a id="vs"></a>
 
 ## 🆚 和内核产出物的区别
 
@@ -113,31 +103,7 @@
 - 🔎 **内容搜索**：只搜鱼篓里的文本文件，命中行直接跳预览；不建索引、不落盘、不支持正则。
 - ✅ **交付勾选**：标记已交付、看进度，状态写进台账。
 
-### 🎁 0.3.2 亮点
-
-- 🪟 **预览不再开新窗口**：Desktop 的 Electron 主进程会 deny 所有 `window.open`（只放行 `https:` 外链），之前「点预览没反应」就是这个原因。现在统一交给 DSH Document Preview：图片 / PDF / Markdown / 文本 / 源码 / Office 都在右侧栏打开。
-- 📍 只保留一个「预览」入口；cwd 外文件明确提示「复制路径或归档」，不再假装能打开。
-- 🖼️ 预览图按 0.3.2 面板重新渲染（排序 + 预览入口 + 行内差异）。
-
-### 🎁 0.3.1 亮点
-
-- 🔎 **未知后缀也能读**：`/file` 对 `.patch`、`.bak` 这类文件先嗅探前 8 KiB，是文本就按 `text/plain` 返回，不再一律触发下载。
-
-### 🎁 0.3.0 亮点
-
-- 📄 **Office 文档交给 Document Preview**：docx / xlsx / pptx 由 DSH 的预览按 PDF 渲染，转换交给内核 `officeToPdf`；0.3.2 起与其他文件统一成一个「预览」入口。
-- ↕️ **排序**：最近修改 / 名称 / 体积 / 类型，四档切换；已删除文件永远沉底。
-- 🪟 **分批渲染**：先铺 200 行，点「显示更多」再追加——800 条也不会一次全渲染。
-- 🧹 **归档保留策略**（可选）：`archiveKeep: 2` 时每次归档写进独立批次目录，只保留最近 2 批；默认 `0` 保持旧布局，行为不变。
-
-### 🎁 0.2.2 亮点
-
-- 🛑 **面板轮询不再扫盘**：5 秒轮询只读缓存，首次打开、`turn/end`、手动刷新才扫描。
-- 🌊 **zip 流式写入**：逐文件读取、异步压缩、边压边发，不再把整包攒进内存。
-- 🎯 **Range / ETag**：PDF、大文件预览可拖动进度，不用重拉整份。
-- 🛡️ **Host 白名单**：堵住 DNS rebinding 下「Origin 与 Host 同时是攻击者域名」的绕过。
-- 🧹 **归档安全**：拒绝 `archiveDir == cwd`，`realpath` 挡住符号链接穿越，失败进 `failed`。
-- 🔎 **面板搜索**：按名称 / 路径 / 描述过滤，和分类 chip 一起生效。
+> 0.3.x / 0.2.x 的逐版细节都搬进了 [CHANGELOG.md](https://github.com/Rosynb666/dsh-whale-catch/blob/main/CHANGELOG.md)，README 只留当前版本。
 
 <a id="install"></a>
 
@@ -186,7 +152,24 @@ dsh plugin --profile <profile> remove dsh-whale-catch
 
 ## 🖥️ 界面与交互
 
-窄栏布局，下面是一张示意（实际宽度随侧栏变化）：
+<p align="center">
+  <a href="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png">
+    <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="0.4.0 面板预览：本次 / 历史、版本链、交付勾选与内容搜索" width="360">
+  </a>
+</p>
+<p align="center"><sub>🧪 0.4.0 面板静态预览，点图看大图；实际配色跟随主题。</sub></p>
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/history.png">
+    <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/history.png" alt="0.4.0 历史视图：归档批次、回执与还原" width="340">
+  </a>
+</p>
+<p align="center"><sub>🧾 历史视图：每个归档批次都能看详情、下回执、还原。</sub></p>
+
+<details>
+<summary><b>文本版布局</b></summary>
+
+窄栏布局示意（实际宽度随侧栏变化）：
 
 ```text
 ┌────────────────────────────────────────────────────┐
@@ -207,6 +190,8 @@ dsh plugin --profile <profile> remove dsh-whale-catch
 │ 扫描于 刚刚                                        │
 └────────────────────────────────────────────────────┘
 ```
+
+</details>
 
 ### 🎛️ 控件速查
 
@@ -288,15 +273,23 @@ $DSH_HOME/whale-catch/archive/
 | `changed` | 内核事件 `workspace/changes` + `ctx.workspaceChanges.summary()` / `.diff()` | git 快照与文件工具改动，带行数与 unified diff |
 | `scanned` | 会话 cwd 扫描（`mtime >= 会话创建时间`） | bash / python / 构建脚本写出的文件 |
 
-```text
-session/event
- ├─ deliverables/presented ──────────────┐
- ├─ workspace/changes ───────────────────┤
- └─ turn/end ──► scan cwd ───────────────┤
-                                        ▼
-                             Basket（按绝对路径合并）
-                                        │
-                         GET /basket ───┴──► 右侧栏面板
+```mermaid
+flowchart LR
+  subgraph E["会话事件"]
+    direction TB
+    P["deliverables/presented"]
+    W["workspace/changes"]
+    S["turn/end → scan cwd"]
+  end
+
+  B["Basket<br/>按绝对路径合并"]
+  API["GET /basket"]
+  UI["右侧栏面板"]
+
+  P --> B
+  W --> B
+  S --> B
+  B --> API --> UI
 ```
 
 ### 🧭 扫描边界
@@ -346,6 +339,9 @@ session/event
     sensitivePatterns: []               # 额外敏感文件名通配符
 ```
 
+<details>
+<summary><b>完整配置字段</b></summary>
+
 | 字段 | 默认值 | 说明 |
 |---|---|---|
 | `archiveDir` | `$DSH_HOME/whale-catch/archive` | 归档根目录；开头的 `~` / `~/` 会展开 |
@@ -364,6 +360,8 @@ session/event
 | `searchTimeoutMs` | `3000` | 内容搜索总预算（毫秒） |
 | `restoreBackup` | `true` | 还原覆盖前是否备份原文件 |
 | `sensitivePatterns` | `[]` | 额外的敏感文件名通配符（只提醒，不自动排除） |
+
+</details>
 
 改完热重载即生效，无需重启。
 
