@@ -157,13 +157,21 @@ test('路径穿越与越界源都被 blocked，且不写盘', async () => {
   }
 })
 
-test('目标是符号链接时拒绝覆盖，链接指向的文件不被改写', async () => {
+test('目标是符号链接时拒绝覆盖，链接指向的文件不被改写', async (t) => {
   const cwd = await tempDir()
   const batch = await tempDir()
   try {
     await put(batch, 'a.txt', 'new')
     const victim = await put(cwd, 'victim.txt', 'safe')
-    await fs.symlink(victim, path.join(cwd, 'a.txt'))
+    try {
+      await fs.symlink(victim, path.join(cwd, 'a.txt'))
+    } catch (error) {
+      if (process.platform === 'win32') {
+        t.skip('Windows 上创建符号链接需要额外权限')
+        return
+      }
+      throw error
+    }
     const manifest = manifestOf([{ rel: 'a.txt', stored: 'a.txt' }])
     const result = await applyRestore({ manifest, baseDir: batch, cwd, mode: 'overwrite' })
     assert.equal(result.restored.length, 0)
