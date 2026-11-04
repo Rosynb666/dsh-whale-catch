@@ -56,7 +56,7 @@ After a few turns in DSH, “where did that file go?” becomes routine:
 - 📦 Sending a dozen deliverables somewhere means digging through the workspace and hoping nothing was missed.
 - 🔍 Checking “how much changed / what changed” means switching back to git or scrolling history.
 
-Whale Catch does three things: **collect automatically**, **show in one place**, **zip / archive in one click**. Changed files can also expand a unified diff right there, and search / group-by-turn / copy-as-Markdown live in the same sidebar.
+Whale Catch now covers the whole line: **collect automatically**, **show in one place**, **check before delivery**, **zip / archive / receipt**, and **a history you can revisit and restore**. Changed files expand a unified diff, version turns are selectable, and content search lives in the same sidebar.
 
 > 💡 **In one sentence:** it does not change your workflow; it just gives “what did this session actually produce?” a permanent answer.
 
@@ -70,7 +70,7 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 | **Scope** | one turn, shown at turn end | **the whole session**, across turns |
 | **Change detail** | shown once on the turn-end card | persistent line badges; expand a unified diff in place; group by turn |
 | **Actions** | open source file | preview / diff / search / zip / archive / copy path / copy as Markdown |
-| **After a Host restart** | change summaries live in memory and are lost | file list rebuilt from mtime (descriptions are lost, see [limitations](#limits)) |
+| **After a Host restart** | change summaries live in memory and are lost | file list rebuilt from mtime; `present` descriptions and delivery marks come back from the local ledger |
 | **Needs agent cooperation** | yes, the model must call `present` | **no**, zero registration |
 | **Deliverable boundary** | what the kernel considers output | also catches files written into cwd by external processes |
 
@@ -85,11 +85,26 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 | 🔍 **Inline diff** | unified diff for kernel-recorded changes: `+` / `−` colours, `@@` headers, new / deleted / binary / oversized notes |
 | 🧭 **Search & grouping** | search by name / path / description; kind chips; group by “Turn N”; copy as Markdown |
 | 📦 **Zip** | selected or all files; `manifest.json` + a human-readable checklist inside; cwd-outside files under `_external/` |
-| 🗂️ **One-click archive** | relative paths preserved; `(2)` suffixes instead of overwrites; failures reported, never silent |
+| 🗂️ **One-click archive** | relative paths preserved; `(2)` suffixes instead of overwrites; failures reported, never silent; a batch manifest and ledger entry are written |
+| 🧾 **Delivery ledger** | **This session / History** views: revisit archived batches, download receipts, restore, compare with the current file |
+| 🩺 **Delivery check** | before zip / archive: missing, oversized, empty, sensitive and dirty-since-archive files; blocking issues stop, warnings can be confirmed |
+| 🔁 **Version chain** | pick any recorded turn for a diff; compare the current file with an archived version |
+| 🔎 **Content search** | search file bodies; hit lines jump to the matching Document Preview line |
+| ✅ **Delivery marks** | mark files delivered and see `N / M delivered`; state is written to the local ledger |
 | 📊 **Line badges** | `+N −M` per file and a session-wide total |
 | 🌗 **Theme-aware** | only `--dsw-alias-*` / `--dsw-static-*` tokens; dark / light follows DSH |
 | 🌐 **Bilingual** | Chinese and English dictionaries; localised error codes |
 | ⚡ **Zero build** | `lib/client.js` is handed to `__ModuleLoader__` as-is |
+
+### 🎁 What's new in 0.4.0
+
+- 🧾 **From basket to delivery workbench**: archives now write `manifest.json` plus a local ledger, so batches survive restarts and session switches; `present` descriptions survive too.
+- 🩺 **Delivery check**: missing / oversized / empty / sensitive / dirty-since-archive issues before you package; content hits report only the pattern name and line number.
+- 🧾 **Receipts**: self-contained HTML / Markdown with sha256, printable and verifiable.
+- 🔁 **Version chain and archive diff**: every recorded turn is selectable, and the current file can be compared with the archived copy.
+- ♻️ **Restore**: `skip` / `rename` / `overwrite`, dry-run first, backup before overwrite, cwd-only writes.
+- 🔎 **Content search**: text files in the basket only, hit lines jump to preview; no index, no disk writes, no regex.
+- ✅ **Delivery marks**: mark delivered, see progress, persisted in the ledger.
 
 ### 🎁 What's new in 0.3.2
 
@@ -132,14 +147,14 @@ On Desktop use the in-app **Settings → Plugins → Install** and paste one of 
 
 ```text
 github:Rosynb666/dsh-whale-catch     # latest main from GitHub
-dsh-whale-catch@0.3.2                # a pinned npm version
+dsh-whale-catch@0.4.0                # a pinned npm version
 ```
 
 Only self-managed profiles use the CLI:
 
 ```sh
 dsh plugin --profile <profile> add github:Rosynb666/dsh-whale-catch
-dsh plugin --profile <profile> add dsh-whale-catch@0.3.2
+dsh plugin --profile <profile> add dsh-whale-catch@0.4.0
 ```
 
 ### 2. Open the panel
@@ -301,6 +316,12 @@ Override in your own profile patch layer — do **not** edit the bundled `cordis
     archiveKeep: 0                        # batch retention; 0 disables batch dirs and pruning
     lookbackMinutes: 720
     allowHosts: []                        # extra allowed Host names; localhost / IP literals always pass
+    ledger: true                          # write the ledger index (manifests are always written)
+    ledgerDir: ~/.dsh/whale-catch/ledger  # ledger index directory
+    searchMaxBytes: 65536                 # per-file read cap for content search
+    searchTimeoutMs: 3000                 # overall content-search budget
+    restoreBackup: true                   # backup before overwriting on restore
+    sensitivePatterns: []                 # extra sensitive filename globs
 ```
 
 | Field | Default | Meaning |
@@ -315,6 +336,12 @@ Override in your own profile patch layer — do **not** edit the bundled `cordis
 | `archiveKeep` | `0` | archive batch retention; `0` keeps the old layout, `> 0` writes `runs/<timestamp>/` and prunes old batches |
 | `lookbackMinutes` | `720` | fallback window when session creation time is unavailable |
 | `allowHosts` | `[]` | extra allowed Host names (reverse proxies); IP literals and `localhost` always pass |
+| `ledger` | `true` | write the ledger index; manifests are always written and can rebuild it |
+| `ledgerDir` | `$DSH_HOME/whale-catch/ledger` | ledger index directory |
+| `searchMaxBytes` | `65536` | per-file read cap for content search |
+| `searchTimeoutMs` | `3000` | overall content-search budget (ms) |
+| `restoreBackup` | `true` | back up existing files before overwrite |
+| `sensitivePatterns` | `[]` | extra sensitive filename globs (warn only) |
 
 Hot reload picks it up; no restart needed.
 
@@ -360,14 +387,16 @@ The routes live on the loopback Host. The threat model is **a third-party page i
 | Limitation | Impact / note |
 |---|---|
 | Current session cwd only | files outside cwd are not collected, except absolute paths declared via `present` |
-| Host restart | `present` descriptions and turn numbers are lost; files reappear via mtime |
+| Host restart | files reappear via mtime; `present` descriptions and delivery marks are rehydrated from the local ledger (0.4+ events only) |
 | Old mtime | files whose mtime predates the session are skipped |
-| Diffs depend on Host lifetime | `workspace-changes` keeps comparisons in memory; after a restart old turns have no diff |
+| Turn diffs depend on Host lifetime | `workspace-changes` keeps comparisons in memory; archive comparison does not depend on it (it reads archived bytes) |
 | Diffs depend on kernel capability | a Host without `workspaceChanges.diff()` shows the “no readable diff” note |
 | Long diffs truncated | `/diff` returns at most 1200 lines; the panel renders at most 300 lines per hunk |
 | No archive cleanup by default | the archive lives under `$DSH_HOME` and is not pruned; set `archiveKeep` to retain batches |
 | Preview needs the DSH preview plugin | preview goes through Document Preview; a disabled plugin shows a notice. Files outside cwd have no `dsh-resource` address, so the panel asks you to copy the path or archive |
-| Large lists | the first 200 rows render, the rest via **Show more**; no true virtualization yet; search is substring only |
+| Large lists | the first 200 rows render, the rest via **Show more**; no true virtualization yet |
+| Content search has a budget | 64 KiB per file, 3 seconds overall; results say when they may be incomplete; no index |
+| Ledger is local | `manifest.json` and `ledger/*.jsonl` stay on this machine; mind cwd and file names when sharing a zip |
 | Dot-files not auto-collected | `.env` and friends need an explicit `present` |
 
 ### ❓ FAQ
@@ -406,7 +435,7 @@ npm pack --dry-run --cache="$(mktemp -d)"
 
 ```sh
 npm install
-npm test        # 68 tests: scan / merge / change metadata / streaming zip / Range / HTTP fence / diff trim / native addresses / archive retention / plugin load
+npm test        # 112 tests: scan / merge / version chain / streaming zip / Range / HTTP fence / diff engine / ledger / preflight / receipt / restore / search / plugin load
 npm run check   # contract self-check: package shape, patch, client.inject, locale meta, icon, deps
 npm run verify  # check + test
 ```
@@ -440,10 +469,10 @@ dsh-whale-catch/
 
 ## 🗺️ Roadmap
 
-- 🌉 Cross-session view: one ledger for every session's deliverables.
-- 💾 Persist `present` descriptions and turns across Host restarts.
+- 🌉 Cross-session aggregate: one view over every session's batches (0.4 already keeps a per-session ledger).
 - 🧹 Archive cleanup dry-runs, plus date / project views (`archiveKeep` already retains batches).
-- ⚡ True virtualization for large lists (currently 200-row batches with **Show more**).
+- ⚡ True virtualization and keyboard navigation for large lists (currently 200-row batches with **Show more**).
+- 🖼️ Image gallery and inline audio / video fallback (formats Document Preview does not cover).
 - 🧪 Real client-render tests, `tsc --checkJs` and lint.
 
 <a id="contributing"></a>

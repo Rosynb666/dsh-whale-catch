@@ -2,6 +2,43 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] - 2026-11-04
+
+从「收纳篮」到「交付工作台」：归档不再写进去就消失，交付前能体检、交完有回执、旧版本能还原、正文能搜。
+
+### 新增
+
+- **交付台账**：每次归档在批次目录写 `_whale-catch/manifest.json`（`archiveKeep = 0` 的扁平布局写 `<session>/_whale-catch/manifests/<批次>.json`），并用 `<ledgerDir>/<session>.jsonl` 做追加索引。面板新增「本次 / 历史」：历史按批次列出，可看详情、下载回执、还原、把某个文件与当前版本对比。索引丢了可以 `POST /ledger/rebuild` 从清单重建。
+- **`present` 描述持久化**：`deliverables/presented` 到达时立即写台账；Host 重启后打开会话，描述与轮次会回填，不再只剩文件名。
+- **版本链**：`workspace/changes` 的每一轮不再覆盖上一轮。面板对改过多次的文件给出轮次下拉，`/diff?turn=N` 可看任意一轮；内核已释放的轮次返回可读的 `no-change`。
+- **归档版本对比**：`GET /diff/archive` 用自写 Myers 行级 diff（零依赖）比较「当前文件」与「某批归档里的那一版」，形状与内核 diff 一致，复用现有 hunk 渲染器。
+- **交付体检**：`POST /preflight` 在打包 / 归档前检查缺文件、超大、空文件、总量超限、路径过长、敏感文件名、文件头密钥模式、归档后改动等；block 项禁止继续，warn / info 可确认后放行。敏感内容只回传模式名与行号，不回传原文。
+- **交付回执**：`GET /receipt` 由清单生成自包含 HTML / Markdown 回执（内联 CSS、零脚本、可打印），附 sha256；`POST /ledger/verify` 重算摘要并标注一致 / 不一致。
+- **交付状态 / 进度**：每行可标记「已交付」并写台账；面板底部显示 `已交付 N / M`。
+- **归档还原**：`POST /archive/restore` 支持 `skip` / `rename` / `overwrite` 三种策略，先 dry-run 出计划；覆盖前备份到 `<archive>/<session>/_whale-catch/backups/<时间戳>/`；只写会话工作目录内，拒绝 `..`、绝对路径、符号链接目标。
+- **内容搜索**：`GET /search` 只在鱼篓里的文本文件中做字面匹配，每文件读 64 KiB、4 路并发、3 秒预算；命中带行号，点击直接跳到 Document Preview 的对应行。不支持正则，避免 ReDoS。
+- **归档空间统计**：`GET /stats` 汇总批次数与体积。
+
+### 变更
+
+- `/archive` 响应新增 `run`、`layout`、`manifest`；`copied` / `failed` 字段保持原样。
+- `/zip` 响应新增 `X-Whale-Catch-Bytes` / `X-Whale-Catch-Files`，客户端可在打包前提示预计体积。
+- `/file` 支持 `?inline=1`，供音视频元素内联播放；不放宽任何路径准入。
+- 配置新增 `ledger` / `ledgerDir` / `searchMaxBytes` / `searchTimeoutMs` / `restoreBackup` / `sensitivePatterns`，默认值与 0.3.2 行为兼容。
+
+### 安全
+
+- 回执 HTML 全字段转义，响应强制 `Content-Disposition: attachment` 与 `CSP: sandbox`，文件名里的脚本不会在应用源上执行。
+- 还原校验清单里的 `rel` / `stored`，源必须在批次目录内、目标必须还在 cwd 内；符号链接目标拒绝，覆盖前备份失败则中止。
+- 体检的内容扫描只在内存里跑，只回传模式名与行号；台账与回执都只在本机。
+- `/ledger` 的 `run` 必须匹配批次名格式，清单读取用 `realpath` 确认仍在归档根内。
+
+### 其他
+
+- 测试 68 → 112 项：diff 引擎、台账读写 / 重建 / 统计、体检、回执转义、还原策略与穿越、版本链、0.4 端到端链路。
+- 新增 `lib/diff.js` / `lib/ledger.js` / `lib/preflight.js` / `lib/receipt.js` / `lib/restore.js` / `lib/search.js` / `lib/ids.js`。
+- 老归档目录（0.3.2 及以前）没有清单：历史页按台账事件或目录显示，不写回、不改名、不重算 hash。
+
 ## [0.3.2] - 2026-10-30
 
 ### 修复

@@ -7,8 +7,10 @@
 1. **零登记。** 任何"请 agent 调个工具登记文件"的设计都不做——历史插件证明它会吃灰。
 2. **不新增会话事件类型。** 只消费内核已持久化的 `deliverables/presented` 与 `workspace/changes`；插件新增 `type` 会让整个会话打不开（官方红线）。
 3. **路径白名单是唯一准入。** 所有读文件/打包/归档/看差异的接口只接受"已经在鱼篓里"的路径，不做任何"传什么读什么"的便利。
-4. **无构建、无服务依赖。** `lib/client.js` 原样交给 `__ModuleLoader__`；唯一运行时依赖是 `@deepseek-ai/schemastery`（纯校验库，不注册服务）。它必须是 `dependencies`：profile 的 pnpm 配置是 `autoInstallPeers: false`，peer 在干净 profile 里不会安装，插件会在加载期直接失败（这条是实测踩出来的）。
-5. **服务全部可选，除了 `webServer`。** `agents`、`workspaceChanges` 走 `ctx.get()`，缺了降级而不是炸树。
+4. **台账是派生视图。** 批次清单 `manifest.json` 是真相，`ledger/*.jsonl` 只是它的目录；索引丢了可以从清单重建，反过来不行。清单跟着文件走，索引跟着机器走。
+5. **只有还原往用户目录写文件。** 它必须 dry-run、默认 `skip`、覆盖前备份、目标必须在 cwd 内；别把「顺手写个文件」做成默认行为。
+6. **无构建、无服务依赖。** `lib/client.js` 原样交给 `__ModuleLoader__`；唯一运行时依赖是 `@deepseek-ai/schemastery`（纯校验库，不注册服务）。它必须是 `dependencies`：profile 的 pnpm 配置是 `autoInstallPeers: false`，peer 在干净 profile 里不会安装，插件会在加载期直接失败（这条是实测踩出来的）。
+7. **服务全部可选，除了 `webServer`。** `agents`、`workspaceChanges` 走 `ctx.get()`，缺了降级而不是炸树。
 
 ## 数据流
 
@@ -79,6 +81,48 @@ view.webContents.setWindowOpenHandler(({ url }) => {
 
 客户端只做三件事：取 `sidebarRight`、有 `native` 地址就调 `openResource`、失败时给提示。**不再出现 `window.open`**，client 测试里有一条静态检查防止回潮。`sidebarRight` 不做硬性 inject：禁用右侧栏相关插件时鱼篓仍然可用（只是预览给提示）。
 
+## 台账：清单是真相，索引是缓存
+
+0.4 之前，归档是一条单行道：复制完就再也看不见。现在的分层是：
+
+```text
+<archiveDir>/<session>/
+├── runs/<stamp>/_whale-catch/manifest.json        # 批次清单（真相）
+└── _whale-catch/manifests/<stamp>.json            # flat 布局的清单（真相）
+<ledgerDir>/<session>.jsonl                        # 追加索引（可重建）
+```
+
+- **清单跟文件放在一起**：批次被拷走、被打包、被手工搬走，清单都跟着；不会出现「索引说有、磁盘上没有」。
+- **索引只追加，不修改历史**：`archive` / `present` / `mark` / `restore` 各是一条事件；读取时取尾部 1 MiB / 200 行，坏行跳过。崩溃最多丢最后一行。
+- **索引可以重建**：`POST /ledger/rebuild` 扫 `**/_whale-catch/manifest.json`，按 `archivedAt` 重写归档事件，保留 `present` / `mark` / `restore`。
+- **老归档不假装有清单**：0.3.2 及以前的目录只按台账事件或目录显示，不写回、不改名、不重算 hash。
+
+`present` 的描述与轮次也走这条路：事件到达时立即追加，Host 重启后 `Basket.hydrate()` 回填。这样「第二天打开还认得这个文件」不再依赖进程活着。
+
+## 跨版本对比为什么自己写 diff
+
+`workspaceChanges.diff()` 只覆盖「本轮」；「当前文件 vs 上次归档」是另一条时间线，内核没有现成能力。`lib/diff.js` 用 Myers O(ND)，只做最小闭环：
+
+- 单侧超过 1 MiB / 2000 行 → `oversized`；二进制 → `binary`；
+- 编辑距离超过 1000 → 退化成整文件替换（`coarse`），但仍给可读内容；
+- 输出形状与内核 hunk 对齐（`oldStart / oldLines / newStart / newLines / lines`），客户端复用同一套渲染器；
+- 路由侧仍过 `trimDiff()` 的 1200 行预算。
+
+## 还原为什么单独设边界
+
+这是插件里唯一一条写用户目录的路径，所以不追求「方便」：
+
+- 清单里的 `rel` / `stored` 必须是安全相对路径；源在批次目录内，目标在 cwd 内；
+- 目标是符号链接就拒绝；父目录 `realpath` 必须仍在 cwd 内；
+- 默认 `skip`，先 dry-run 给计划；`overwrite` 前备份到 `<archive>/<session>/_whale-catch/backups/<stamp>/`，备份失败整次中止；
+- 还原也写一条 `restore` 事件，出了问题能查到「什么时候、从哪批、还原了什么」。
+
+## 体检与回执为什么不碰文件内容之外的东西
+
+- 体检的同步部分只看快照与最近清单，不读盘；内容扫描只读每个文件的头部 64 KiB，只回传命中的**模式名与行号**，不回传原文，也不落盘。
+- 回执是唯一把用户文件名拼进 HTML 的地方：全字段转义，响应强制 `Content-Disposition: attachment` + `CSP: sandbox`，客户端用 Blob 下载而不是在应用源里渲染。
+- 敏感文件只提醒、不自动排除——用户可能就是要交付一个 `.pem`，插件不该替人做决定。
+
 ## 归档保留策略为什么是可选的
 
 旧布局是 `<archiveDir>/<sessionId>/<相对路径>`，同名文件用 `(2)` 避让——稳定、可预测，但**只增不减**。0.3.0 没有直接改成"每次一个时间戳批次"，因为那会让所有老用户的归档路径一夜之间全部失效；默认 `archiveKeep = 0` 保持原样。
@@ -132,15 +176,14 @@ view.webContents.setWindowOpenHandler(({ url }) => {
 
 ## 已知缺口
 
-- 跨会话视图（现在一个会话一个鱼篓）。
-- `present` 描述的持久化。
-- 差异只在 Host 存活期间可看：内核不持久化对比，重启后旧轮次只剩文件名。
+- 跨会话聚合视图：0.4 已按会话分账，还没有「所有会话一屏」的入口。
+- 轮次差异仍只在 Host 存活期间可看：内核不持久化对比；归档版对比不受影响。
 - 更聪明的类型识别（现在按后缀；Office 文档内部类型没有嗅探）。
-- 归档目录的自动整理策略（按日期/按项目/dry-run）；`archiveKeep` 只做了按批保留。
+- 归档目录的自动整理（按日期/按项目/dry-run）；`archiveKeep` 只做了按批保留。
 - cwd 外文件没有原生预览（`absolute` scope 当前不被 Document Preview 接受），仍走 `/file` 下载。
 - 点开头的文件（`.env`、`.gitignore`）有意不扫描，避免把密钥类文件自动收进筐；需要交付时用 `present`。
-- 文件列表按 200 行分批渲染、支持排序，但还没有真正的窗口化；搜索只做名称/路径/描述的子串匹配。
-- zip 的 manifest 会写 cwd（主目录前缀脱敏为 `~`）与会话 id，分享前需要自己留意。
+- 文件列表按 200 行分批渲染、支持排序，但还没有真正的窗口化 / 键盘导航；内容搜索有 64 KiB / 3 秒预算。
+- 回执与台账只在本机；zip manifest 会写 cwd（主目录前缀脱敏为 `~`）与会话 id，分享前需要自己留意。
 
 ## 测试策略
 

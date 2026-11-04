@@ -237,3 +237,46 @@ test('快照里的 native 字段：cwd 内文件有地址，cwd 外与已删除�
     await fs.rm(outside, { recursive: true, force: true })
   }
 })
+
+test('版本链：多轮改动不覆盖，changeForTurn 能取到指定轮', async () => {
+  const dir = await tempDir()
+  try {
+    await fs.writeFile(path.join(dir, 'a.txt'), 'v2')
+    const basket = new Basket({ sessionId: 's4', cwd: dir, sinceMs: 0 })
+    basket.addChanged([{ path: 'a.txt', added: 1, deleted: 0 }], 1, 10)
+    basket.addChanged([{ path: 'a.txt', added: 2, deleted: 1 }], 2, 11)
+
+    const snapshot = await basket.snapshot()
+    const entry = snapshot.files[0]
+    assert.equal(entry.changeCount, 2)
+    assert.deepEqual(entry.changeTurns, [2, 1])
+    assert.equal(entry.added, 2, '行数徽章仍取最近一轮')
+
+    assert.equal(basket.changeForTurn('a.txt', 1).seq, 10)
+    assert.equal(basket.changeForTurn('a.txt', 2).seq, 11)
+    assert.equal(basket.changeForTurn('a.txt').seq, 11)
+    assert.equal(basket.changeForTurn('a.txt', 99), undefined)
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('hydrate 回填 present 描述、轮次与交付状态', async () => {
+  const dir = await tempDir()
+  try {
+    await fs.writeFile(path.join(dir, 'a.txt'), 'x')
+    const basket = new Basket({ sessionId: 's5', cwd: dir, sinceMs: 0 })
+    basket.addScan({ files: [{ path: path.join(dir, 'a.txt'), rel: 'a.txt', name: 'a.txt', size: 1, mtimeMs: Date.now() }], truncated: false, visited: 1, scannedAt: Date.now() })
+    basket.hydrate([
+      { v: 1, t: 'present', at: 1, turn: 4, files: [{ rel: 'a.txt', desc: '最终交付' }] },
+      { v: 1, t: 'mark', at: 2, path: path.join(dir, 'a.txt'), state: 'done', note: '已发' },
+    ])
+    const snapshot = await basket.snapshot()
+    assert.equal(snapshot.files[0].description, '最终交付')
+    assert.equal(snapshot.files[0].turn, 4)
+    assert.equal(snapshot.files[0].delivery.state, 'done')
+    assert.equal(snapshot.files[0].delivery.note, '已发')
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+  }
+})

@@ -1,7 +1,7 @@
 {
   "name": "dsh-whale-catch",
-  "version": "0.3.2",
-  "description": "深海鱼篓：零登记收进本次会话产出的文件——右侧栏用 DSH Document Preview 预览、看行内差异、搜索排序、一键打包 zip 与归档。Zero-registration deliverable basket for DeepSeek Harness.",
+  "version": "0.4.0",
+  "description": "深海鱼篓：零登记收进本次会话产出的文件——右侧栏预览、行内差异、交付台账、体检、回执、还原、内容搜索与打包归档。Zero-registration deliverable workbench for DeepSeek Harness.",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -31,19 +31,23 @@
     "prepublishOnly": "npm run verify"
   },
   "keywords": [
-    "dsh",
-    "dsh-plugin",
-    "deepseek-harness",
+    "archive",
     "cordis",
+    "deepseek-harness",
     "deliverables",
-    "download",
-    "zip",
-    "preview",
     "diff",
     "document-preview",
-    "archive",
+    "download",
+    "dsh",
+    "dsh-plugin",
+    "ledger",
+    "preview",
+    "receipt",
+    "restore",
+    "search",
     "sidebar",
-    "whale"
+    "whale",
+    "zip"
   ],
   "license": "MIT",
   "author": "Rosynb666",

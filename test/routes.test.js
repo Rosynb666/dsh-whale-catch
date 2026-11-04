@@ -648,6 +648,16 @@ test('archiveKeep = 0 保持旧布局：不建 runs 目录、不返回 pruned', 
   assert.equal(payload.value.pruned, undefined)
   assert.equal(await fs.access(path.join(dir, '_archive', 'session-test', 'runs')).then(() => true, () => false), false)
   assert.equal(await fs.readFile(path.join(dir, '_archive', 'session-test', '报告.docx'), 'utf8'), 'docx')
+  assert.ok(payload.value.run, '扁平布局也应有批次号')
+
+  const manifestsDir = path.join(dir, '_archive', 'session-test', '_whale-catch', 'manifests')
+  const names = await fs.readdir(manifestsDir)
+  assert.equal(names.length, 1)
+  const manifest = JSON.parse(await fs.readFile(path.join(manifestsDir, names[0]), 'utf8'))
+  assert.equal(manifest.layout, 'flat')
+  assert.equal(manifest.files[0].rel, '报告.docx')
+  assert.equal(manifest.files[0].stored, '报告.docx')
+  assert.equal(manifest.files[0].sha256.length, 64)
 })
 
 test('archiveKeep = 2：批次目录只留最近两批，非批次目录不碰', async (t) => {
