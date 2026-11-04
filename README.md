@@ -4,7 +4,7 @@
 
 ### dsh-whale-catch · 让本场会话的交付物自己游进篮子
 
-**自动收集 · 一处预览 · 就地看差异 · 搜索排序 · 一键打包 / 归档**
+**自动收集 · 就地预览 / 差异 · 交付台账 · 体检 · 回执 · 还原 · 内容搜索**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/release.yml?style=flat-square&label=Release)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml)
@@ -22,12 +22,18 @@
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="深海鱼篓 0.3.2 面板预览：排序、预览入口与行内差异" width="760">
+  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="深海鱼篓 0.4.0 面板预览：本次 / 历史、版本链、交付勾选与内容搜索" width="760">
 </p>
 
-<p align="center"><sub>🧪 0.3.2 面板静态预览：用 <code>lib/client.js</code> 里真实的面板组件 + 示例数据渲染，不是 DSH 实机截图。排序框、预览入口、行内差异都在图里；实际配色跟随你的主题。</sub></p>
+<p align="center"><sub>🧪 0.4.0 面板静态预览：用 <code>lib/client.js</code> 里真实的面板组件 + 示例数据渲染，不是 DSH 实机截图。顶部「本次 / 历史」、内容搜索、轮次下拉、交付勾选都在图里；实际配色跟随你的主题。</sub></p>
 
-给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的右侧栏插件：把一场会话里**产出或改动过的文件**汇总到「鱼篓」里，支持预览、行内差异、搜索、按轮分组、打包 zip、归档与复制清单。
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/history.png" alt="深海鱼篓 0.4.0 历史视图：归档批次、回执与还原" width="430">
+</p>
+
+<p align="center"><sub>🧾 历史视图：每个归档批次都能看详情、下回执、还原；当前视图里的文件还能和归档版对比。</sub></p>
+
+给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的右侧栏插件：把一场会话里**产出或改动过的文件**汇总到「鱼篓」里，支持预览、行内差异、版本链、交付台账、交付体检、回执、归档还原、内容搜索、打包 zip 与复制清单。
 
 ## 🧭 目录
 
@@ -183,22 +189,23 @@ dsh plugin --profile <profile> remove dsh-whale-catch
 窄栏布局，下面是一张示意（实际宽度随侧栏变化）：
 
 ```text
-┌──────────────────────────────────────────────┐
-│ 🐋 鱼篓              12 条鱼 · 3.4 MB  [刷新] │
-│ [全部 12] [📄 文档 7] [📊 表格 3] [🖼 图片 2] │
-│ [🔎 搜索文件名、路径或描述…                  ] │
-├──────────────────────────────────────────────┤
-│ ☑ 📄 项目周报.docx                   +12 −3  │
-│    第三季度周报 · 周报.docx    [预览] [差异] ⧉ │
-│    1.2 MB · 3 分钟前 · 交付 · 改动            │
-│ ☐ 📊 预算表-2026.xlsx                         │
-│    plan.xlsx · 88 KB · 12 分钟前              │
-│ ☐ 🖼 产品手册.pdf                             │
-│    ...                                        │
-├──────────────────────────────────────────────┤
-│ 已选 2 项                    [归档] [打包 zip] │
-│ 扫描于 刚刚                                   │
-└──────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────┐
+│ 🐋 鱼篓   6 条鱼 · 6.6 MB   [本次] [历史]  [刷新]  │
+│ [全部 6] [📄 文档 2] [📊 表格 1] [📽 演示 1]        │
+│ [🔎 搜索文件名、路径或描述…              ] [内容]  │
+├────────────────────────────────────────────────────┤
+│ ☑ 📄 项目周报.docx                         +12 −3  │
+│    第三季度周报 · 周报.docx       [预览] [✓] [⧉]  │
+│    904 KB · 3 分钟前 · 交付 · 已交付               │
+│ ☐ 📽 评审材料.pptx                         +42 −7  │
+│    设计/评审材料.pptx     [预览] [差异] [查看轮次] │
+│    34 KB · 25 分钟前 · 改动                        │
+│ ☐ 📊 预算表-2026.xlsx                              │
+│    86 KB · 12 分钟前                               │
+├────────────────────────────────────────────────────┤
+│ 已选 0 项 · 已交付 2 / 6      [归档] [全部打包]    │
+│ 扫描于 刚刚                                        │
+└────────────────────────────────────────────────────┘
 ```
 
 ### 🎛️ 控件速查
@@ -208,15 +215,22 @@ dsh plugin --profile <profile> remove dsh-whale-catch
 | ☑️ **复选框 / 行点击** | 勾选文件；只打包 / 归档选中的，一个都不选就是全部 |
 | 🔄 **刷新** | 强制重扫当前会话 cwd，并拉最新快照 |
 | 🏷️ **分类 chip** | 全部 / 文档 / 表格 / 演示 / 图片 / 代码 / 压缩 / 音视频 / 其他 |
+| 🗂️ **本次 / 历史** | 本次是当前会话的鱼篓；历史是本地交付台账（批次、回执、还原） |
 | 🔎 **搜索框** | 文件名、相对路径、描述的 case-insensitive 子串匹配 |
+| 🔤 **内容开关** | 勾上后回车搜正文，命中行可跳到 Document Preview 的对应行；不建索引 |
 | 🔀 **按轮分组** | 按「第 N 轮」分段，轮次倒序，没标轮次的沉底 |
 | ↕️ **排序** | 最近修改 / 名称 / 体积 / 类型，选择后立即重排 |
 | 📋 **复制清单** | 当前勾选（没有勾选时用当前筛选）导出 Markdown，贴周报 / Issue |
 | ⧉ **复制路径** | 复制绝对路径，贴给别的工具最省事 |
 | 👁️ **预览** | 在右侧栏用 DSH Document Preview 打开（图片 / PDF / Markdown / 文本 / 源码 / Office）；cwd 外文件提示不可预览 |
 | 🧾 **差异** | 就地展开内核留下的 unified diff；只有带 `workspace/changes` 记录的条目才有 |
+| 🕰️ **查看轮次** | 同一个文件改过多次时，选任意一轮看 diff；内核已释放的轮次会给可读提示 |
+| ✅ **交付勾选** | 标记已交付 / 取消，底部显示 `已交付 N / M`；状态写进本地台账 |
+| 🩺 **交付体检** | 点打包 / 归档先体检：缺文件、超大、空文件、敏感文件名 / 文件头、归档后改动；block 项拦截 |
 | 📦 **打包 zip** | 生成带交付清单的 zip，直接下载 |
-| 🗂️ **归档** | 复制到配置的归档目录，失败会显示「成功 N / 失败 M」 |
+| 🗂️ **归档** | 复制到配置的归档目录，写批次清单与台账；失败会显示「成功 N / 失败 M」 |
+| 🧾 **回执 / 还原** | 历史批次可下 HTML / Markdown 回执（含 sha256），也可先 dry-run 再还原 |
+| 🔁 **对比当前** | 历史详情里把归档版与当前文件对比；不依赖内核的 diff 内存 |
 | 🔎 **显示更多** | 超过 200 条时先铺前 200 行，点一下继续追加 |
 
 ### 📦 打包后的 zip 长这样
@@ -240,7 +254,10 @@ $DSH_HOME/whale-catch/archive/
 └── <session-id>/
     ├── 项目周报.docx
     ├── assets/chart.png
-    └── _external/外部交付.pdf
+    ├── _external/外部交付.pdf
+    └── _whale-catch/
+        ├── manifests/<批次>.json      # 扁平布局的批次清单
+        └── backups/<时间戳>/          # 覆盖还原前的备份
 ```
 
 开启 `archiveKeep` 后，每次归档进独立批次，旧批次自动清理：
@@ -250,10 +267,14 @@ $DSH_HOME/whale-catch/archive/
 └── <session-id>/
     └── runs/
         ├── 20261030-153012-120/
-        │   └── 项目周报.docx
+        │   ├── 项目周报.docx
+        │   └── _whale-catch/manifest.json
         └── 20261030-160145-004/   # 只保留最近 N 批
-            └── 项目周报.docx
+            ├── 项目周报.docx
+            └── _whale-catch/manifest.json
 ```
+
+台账索引在 `$DSH_HOME/whale-catch/ledger/<session-id>.jsonl`；它只是清单的目录，丢了可以用 `POST /whale-catch/api/ledger/rebuild` 从清单重建。
 
 <a id="how"></a>
 

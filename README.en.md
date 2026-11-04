@@ -4,7 +4,7 @@
 
 ### dsh-whale-catch · every deliverable from this session swims into the basket
 
-**Collect automatically · preview in one place · diff in place · search & sort · zip / archive in one click**
+**Collect automatically · preview & diff · delivery ledger · checks · receipts · restore · content search**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/Rosynb666/dsh-whale-catch/release.yml?style=flat-square&label=Release)](https://github.com/Rosynb666/dsh-whale-catch/actions/workflows/release.yml)
@@ -22,12 +22,18 @@
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="Whale Catch 0.3.2 panel preview: sorting, preview action and inline diff" width="760">
+  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/preview.png" alt="Whale Catch 0.4.0 panel preview: This session / History, version chain, delivery marks and content search" width="760">
 </p>
 
-<p align="center"><sub>🧪 Static 0.3.2 panel preview rendered with the real component in <code>lib/client.js</code> and sample data — not a live DSH screenshot. Sorting, the preview action and the inline diff are all visible; colours follow your theme.</sub></p>
+<p align="center"><sub>🧪 Static 0.4.0 panel preview rendered with the real component in <code>lib/client.js</code> and sample data — not a live DSH screenshot. The This session / History switch, content search, turn picker and delivery marks are all visible; colours follow your theme.</sub></p>
 
-A right-sidebar plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH): it collects the files a session **produced or changed** into one basket, with preview, inline diff, search, grouping, zip, archive and copy-as-Markdown.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rosynb666/dsh-whale-catch/main/docs/history.png" alt="Whale Catch 0.4.0 history view: archived batches, receipts and restore" width="430">
+</p>
+
+<p align="center"><sub>🧾 History view: every archived batch can be inspected, downloaded as a receipt, or restored; files in the current view can also be compared with their archived copy.</sub></p>
+
+A right-sidebar plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH): it collects the files a session **produced or changed** into one basket, with preview, inline diff, version chain, delivery ledger, delivery checks, receipts, archive restore, content search, zip and copy-as-Markdown.
 
 ## 🧭 Contents
 
@@ -182,22 +188,23 @@ dsh plugin --profile <profile> remove dsh-whale-catch
 A narrow sidebar layout (illustrative; actual width follows the sidebar):
 
 ```text
-┌──────────────────────────────────────────────┐
-│ 🐋 Catch           12 files · 3.4 MB [Refresh]│
-│ [All 12] [📄 Docs 7] [📊 Sheets 3] [🖼 2]     │
-│ [🔎 Search name, path or description…        ]│
-├──────────────────────────────────────────────┤
-│ ☑ 📄 report.docx                     +12 −3  │
-│    Q3 report · report.docx      [Open] [Diff] ⧉│
-│    1.2 MB · 3 min ago · Delivered · Changed   │
-│ ☐ 📊 budget-2026.xlsx                         │
-│    plan.xlsx · 88 KB · 12 min ago             │
-│ ☐ 🖼 product-guide.pdf                        │
-│    ...                                        │
-├──────────────────────────────────────────────┤
-│ 2 selected                    [Archive] [Zip] │
-│ scanned just now                              │
-└──────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────┐
+│ 🐋 Catch  6 files · 6.6 MB  [Session] [History] [↻]│
+│ [All 6] [📄 Docs 2] [📊 Sheets 1] [📽 Slides 1]     │
+│ [🔎 Search name, path or description…      ] [Body]│
+├────────────────────────────────────────────────────┤
+│ ☑ 📄 report.docx                           +12 −3  │
+│    Q3 report · report.docx        [Open] [✓] [⧉]  │
+│    904 KB · 3 min ago · Delivered · marked done    │
+│ ☐ 📽 review.pptx                           +42 −7  │
+│    design/review.pptx   [Open] [Diff] [Turn ▾]     │
+│    34 KB · 25 min ago · Changed                    │
+│ ☐ 📊 budget-2026.xlsx                              │
+│    86 KB · 12 min ago                              │
+├────────────────────────────────────────────────────┤
+│ 0 selected · 2 / 6 delivered   [Archive] [Zip all] │
+│ scanned just now                                   │
+└────────────────────────────────────────────────────┘
 ```
 
 ### 🎛️ Controls
@@ -207,15 +214,22 @@ A narrow sidebar layout (illustrative; actual width follows the sidebar):
 | ☑️ **Checkbox / row click** | select files; only selected files are zipped / archived; none selected means all |
 | 🔄 **Refresh** | force a rescan of the session cwd and fetch a fresh snapshot |
 | 🏷️ **Kind chips** | all / docs / sheets / slides / images / code / archives / media / other |
+| 🗂️ **Session / History** | Session is this conversation's basket; History is the local delivery ledger (batches, receipts, restore) |
 | 🔎 **Search** | case-insensitive substring over name, relative path and description |
+| 🔤 **Body toggle** | search file contents on Enter; hit lines jump to the matching Document Preview line; no index is written |
 | 🔀 **Group by turn** | sections per “Turn N”, newest first, unmarked files last |
 | ↕️ **Sort** | modified / name / size / kind; re-renders immediately |
 | 📋 **Copy list** | export the selection (or current filter) as Markdown for a report or issue |
 | ⧉ **Copy path** | copy the absolute path |
 | 👁️ **Open** | open in the right sidebar through DSH Document Preview (images / PDF / Markdown / text / source / Office); files outside cwd show a hint |
 | 🧾 **Diff** | expand the kernel's unified diff; only entries with a `workspace/changes` record have one |
+| 🕰️ **Turn picker** | when a file changed across turns, pick any recorded turn; released turns show a readable hint |
+| ✅ **Delivery mark** | mark delivered / undo; the footer shows `N / M delivered`; state goes into the local ledger |
+| 🩺 **Delivery check** | before zip / archive: missing, oversized, empty, sensitive names / headers, dirty-since-archive; blocking issues stop |
 | 📦 **Zip** | download a zip with the delivery manifest |
-| 🗂️ **Archive** | copy into the configured archive directory; shows “N archived / M failed” |
+| 🗂️ **Archive** | copy into the archive directory, write a batch manifest and ledger entry; shows “N archived / M failed” |
+| 🧾 **Receipt / Restore** | download an HTML / Markdown receipt with sha256, or dry-run and restore a batch |
+| 🔁 **Compare current** | compare an archived version with the current file; does not depend on kernel diff memory |
 | 🔎 **Show more** | with more than 200 rows, starts with 200 and appends on demand |
 
 ### 📦 What the zip looks like
@@ -239,7 +253,10 @@ $DSH_HOME/whale-catch/archive/
 └── <session-id>/
     ├── report.docx
     ├── assets/chart.png
-    └── _external/external-delivery.pdf
+    ├── _external/external-delivery.pdf
+    └── _whale-catch/
+        ├── manifests/<batch>.json     # batch manifest for the flat layout
+        └── backups/<timestamp>/       # pre-overwrite restore backups
 ```
 
 With `archiveKeep` enabled, each run gets its own batch directory and old batches are pruned:
@@ -249,10 +266,15 @@ $DSH_HOME/whale-catch/archive/
 └── <session-id>/
     └── runs/
         ├── 20261030-153012-120/
-        │   └── report.docx
+        │   ├── report.docx
+        │   └── _whale-catch/manifest.json
         └── 20261030-160145-004/   # keep newest N batches
-            └── report.docx
+            ├── report.docx
+            └── _whale-catch/manifest.json
 ```
+
+The ledger index lives at `$DSH_HOME/whale-catch/ledger/<session-id>.jsonl`; it is only a directory of the manifests and can be rebuilt with `POST /whale-catch/api/ledger/rebuild`.
+
 
 <a id="how"></a>
 

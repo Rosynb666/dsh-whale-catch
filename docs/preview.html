@@ -131,14 +131,65 @@
     file.binary = false
     file.oversized = false
     file.diffable = changed
-    // 0.3.0：cwd 内的 Office 文件带原生预览地址，行内会多出「原生」按钮
+    // 0.4：版本链与交付状态
+    file.changeCount = changed ? (file.name === 'build.py' ? 2 : 3) : 0
+    file.changeTurns = changed
+      ? Array.from({ length: file.changeCount }, (_, index) => Math.max(1, (file.turn || 1) - index))
+      : []
+    file.delivery = ['项目周报.docx', '产品手册.pdf'].includes(file.name)
+      ? { state: 'done', note: '', at: Date.now() - 60_000 }
+      : null
+    // cwd 内的 Office 文件带原生预览地址
     file.native = ['docx', 'xlsx', 'pptx'].includes(file.ext)
       ? 'dsh-resource://file/session/preview/' + encodeURIComponent(file.rel)
       : null
   })
+  sample.totals.delivered = 2
+
+  const ledgerEvents = [
+    {
+      v: 1, t: 'archive', at: Date.now() - 172_800_000,
+      run: '20261102-101200-330', layout: 'flat', count: 2, bytes: 230_044,
+    },
+    {
+      v: 1, t: 'archive', at: Date.now() - 86_400_000,
+      run: '20261103-181500-120', layout: 'runs', count: 4, bytes: 1_203_844,
+    },
+  ]
+  const ledgerRun = {
+    session: 'preview',
+    run: '20261103-181500-120',
+    layout: 'runs',
+    archivedAt: new Date(Date.now() - 86_400_000).toISOString(),
+    manifest: {
+      run: '20261103-181500-120',
+      cwd: '~/projects/demo',
+      archivedAt: new Date(Date.now() - 86_400_000).toISOString(),
+      files: [
+        { rel: '项目周报.docx', stored: '项目周报.docx', size: 925_838, sha256: 'a'.repeat(64), turn: 4, desc: '第三季度周报（含图表）' },
+        { rel: '产品手册.pdf', stored: '产品手册.pdf', size: 108_662, sha256: 'b'.repeat(64), turn: 3, desc: '产品手册定稿' },
+        { rel: '设计/评审材料.pptx', stored: '设计/评审材料.pptx', size: 34_677, sha256: 'c'.repeat(64), turn: 2, desc: null },
+      ],
+      failed: [],
+    },
+  }
 
   window.fetch = (url, init) => {
     const target = String(url)
+    if (target.includes('/ledger/run')) {
+      return Promise.resolve({
+        ok: true, status: 200, headers: { get: () => '' },
+        json: () => Promise.resolve({ ok: true, value: ledgerRun }),
+        blob: () => Promise.resolve(new Blob()),
+      })
+    }
+    if (target.includes('/ledger')) {
+      return Promise.resolve({
+        ok: true, status: 200, headers: { get: () => '' },
+        json: () => Promise.resolve({ ok: true, value: { session: 'preview', events: ledgerEvents } }),
+        blob: () => Promise.resolve(new Blob()),
+      })
+    }
     if (target.includes('/diff')) {
       // 预览默认不展开差异，但把接口备好，点开也不会露馅
       const diff = {
@@ -210,12 +261,18 @@
   const root = ReactDOM.createRoot(document.getElementById('mount'))
   root.render(React.createElement(Panel, { sessionId: 'preview', t }))
 
-  // 预览图想把「差异」也拍进去：挂载后自动点开第一条改动文件（仅预览页的行为）
+  // 预览图用 ?view=history 拍历史视图；默认拍「本次」并把差异展开。
+  const view = new URLSearchParams(location.search).get('view')
   setTimeout(() => {
-    const target = Array.from(document.querySelectorAll('button'))
-      .find((button) => button.textContent === '差异')
+    const buttons = Array.from(document.querySelectorAll('button'))
+    if (view === 'history') {
+      const chip = buttons.find((button) => button.textContent === '历史')
+      if (chip) chip.click()
+      return
+    }
+    const target = buttons.find((button) => button.textContent === '差异')
     if (target) target.click()
-  }, 500)
+  }, 800)
 </script>
 </body>
 </html>
