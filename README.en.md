@@ -119,14 +119,14 @@ On Desktop use the in-app **Settings → Plugins → Install** and paste one of 
 
 ```text
 github:Rosynb666/dsh-whale-catch     # latest main from GitHub
-dsh-whale-catch@0.4.0                # a pinned npm version
+dsh-whale-catch@0.4.1                # a pinned npm version
 ```
 
 Only self-managed profiles use the CLI:
 
 ```sh
 dsh plugin --profile <profile> add github:Rosynb666/dsh-whale-catch
-dsh plugin --profile <profile> add dsh-whale-catch@0.4.0
+dsh plugin --profile <profile> add dsh-whale-catch@0.4.1
 ```
 
 ### 2. Open the panel

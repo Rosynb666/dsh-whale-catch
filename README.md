@@ -120,14 +120,14 @@ Desktop 用户走应用内：**设置 → 插件 → 安装**，粘贴下面任�
 
 ```text
 github:Rosynb666/dsh-whale-catch     # GitHub 最新 main
-dsh-whale-catch@0.4.0                # npm 指定版本
+dsh-whale-catch@0.4.1                # npm 指定版本
 ```
 
 非 Desktop 的自建 profile 才用 CLI：
 
 ```sh
 dsh plugin --profile <profile> add github:Rosynb666/dsh-whale-catch
-dsh plugin --profile <profile> add dsh-whale-catch@0.4.0
+dsh plugin --profile <profile> add dsh-whale-catch@0.4.1
 ```
 
 ### 2. 打开面板

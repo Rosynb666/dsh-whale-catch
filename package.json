@@ -1,6 +1,6 @@
 {
   "name": "dsh-whale-catch",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "深海鱼篓：零登记收进本次会话产出的文件——右侧栏预览、行内差异、交付台账、体检、回执、还原、内容搜索与打包归档。Zero-registration deliverable workbench for DeepSeek Harness.",
   "type": "module",
   "main": "./lib/index.js",
