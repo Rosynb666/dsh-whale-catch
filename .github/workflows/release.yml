@@ -105,6 +105,22 @@ jobs:
           echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > "$HOME/.npmrc"
           npm publish --provenance --access public --tag "${{ steps.dist-tag.outputs.tag }}"
 
+      - name: 校验 npm 上真的出现了这个版本
+        if: steps.npm-version.outputs.exists != 'true'
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          for i in $(seq 1 6); do
+            if npm view "dsh-whale-catch@$VERSION" version >/dev/null 2>&1; then
+              echo "::notice::npm 上已确认 dsh-whale-catch@$VERSION"
+              exit 0
+            fi
+            echo "等待 npm 传播（$i/6）…"
+            sleep 10
+          done
+          echo "::error::npm 发布后校验失败：dsh-whale-catch@$VERSION 不在 registry 上"
+          exit 1
+
       - name: 生成 npm tarball（附到 Release）
         run: npm pack
 
