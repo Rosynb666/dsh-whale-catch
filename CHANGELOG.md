@@ -2,6 +2,34 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.5.0] - 2026-11-10
+
+从「交付工作台」到「可发出去的门户」。
+
+### 新增
+
+- **交付门户**：`POST /portal` 把归档批次渲染成自包含 HTML（`portal.html`），附 `交付说明.md`、`_whale-catch/manifest.json`、回执 HTML / Markdown。门户零脚本、无外链、可离线打开、打印友好；默认清单版，`includeFiles: true` 时把文件正文放进 `files/`。
+- **交付摘要**：规则统计文件数、体积、类型分布、涉及轮次、未归档项，写进门户与 `交付说明.md`；不调模型、不读正文。
+- **跨会话汇总**：`GET /aggregate` 只读本机台账索引，返回总会话数 / 批次数 / 文件数 / 体积与会话列表（最多 200 个会话，按最近归档排序）。历史页顶部显示一行总量。
+- 历史页每批新增「门户」按钮，直接下载清单版门户 zip。
+
+### 接口
+
+- `POST /portal` `{ session, run, includeFiles? }` → `application/zip`
+- `GET /brief?session=&run=` → 摘要 JSON
+- `GET /aggregate?limit=` → 跨会话汇总 JSON
+
+### 安全
+
+- 门户 HTML 全字段转义，CSP `default-src 'none'`，模板不带脚本；完整版只读归档清单里的 `stored` 相对路径，拒绝 `..` 与越界目标。
+- 跨会话汇总只读 `<ledgerDir>/*.jsonl`，不扫归档目录、不读文件正文；索引丢失可用 `POST /ledger/rebuild` 重建。
+
+### 其他
+
+- 中英文字典新增 `history.portal` / `portal.generating` / `portal.done` / `history.hub`。
+- 测试 112 → 119：新增 `test/hub.test.js`，覆盖摘要、门户转义 / 完整版、zip 条目、跨会话汇总。
+- 旧接口、旧归档、旧面板不受影响；门户只对已归档批次生效。
+
 ## [0.4.1] - 2026-11-08
 
 发布同步版：把 0.4.0 之后落在 `main` 上的文档、截图与一处文案修复带进 npm 包，不新增功能。

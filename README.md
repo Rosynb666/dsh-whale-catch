@@ -84,6 +84,7 @@
 | 📦 **打包 zip** | 只打选中项或全部；包内附 `manifest.json` + `交付清单.md`；cwd 外文件统一 `_external/` |
 | 🗂️ **一键归档** | 复制到归档目录，保留相对路径；同名自动 `(2)`；失败逐条回传，不假装成功；同时写批次清单与台账 |
 | 🧾 **交付台账** | 「本次 / 历史」双视图：归档批次可回看、可下载回执、可还原、可与当前版本对比 |
+| 🪟 **交付门户** | 归档批次生成自包含 HTML：断网可开、可打印、附 sha256；可选带文件正文的完整版 |
 | 🩺 **交付体检** | 打包 / 归档前检查缺文件、超大、空文件、敏感文件、改动未归档；block 项拦截，warn 项确认放行 |
 | 🔁 **版本链** | 同一个文件改过多次时，可下拉选任意一轮看 diff；归档版与当前版也能对比 |
 | 🔎 **内容搜索** | 搜正文，命中行直接跳到 Document Preview 的对应行 |
@@ -92,6 +93,12 @@
 | 🌗 **跟随主题** | 只用 `--dsw-alias-*` / `--dsw-static-*` 主题 token，深色 / 浅色自动适配 |
 | 🌐 **中英双语** | 面板字典中英对齐；错误码有本地化文案 |
 | ⚡ **零构建** | `lib/client.js` 原样交给 `__ModuleLoader__`，没有打包步骤 |
+
+### 🎁 0.5.0 亮点
+
+- 🪟 **交付门户**：归档批次一键变成自包含 `portal.html`，断网可开、可打印、附 sha256；清单版轻，完整版可带文件正文。
+- 🧾 **交付摘要**：文件数、体积、类型分布、轮次、未归档项自动成文，直接复制进交付说明。
+- 🌐 **跨会话汇总**：历史页顶部显示全部会话的批次数 / 文件数 / 体积；台账只读本机，索引丢了可重建。
 
 ### 🎁 0.4.0 亮点
 
@@ -120,14 +127,14 @@ Desktop 用户走应用内：**设置 → 插件 → 安装**，粘贴下面任�
 
 ```text
 github:Rosynb666/dsh-whale-catch     # GitHub 最新 main
-dsh-whale-catch@0.4.1                # npm 指定版本
+dsh-whale-catch@0.5.0                # npm 指定版本
 ```
 
 非 Desktop 的自建 profile 才用 CLI：
 
 ```sh
 dsh plugin --profile <profile> add github:Rosynb666/dsh-whale-catch
-dsh plugin --profile <profile> add dsh-whale-catch@0.4.1
+dsh plugin --profile <profile> add dsh-whale-catch@0.5.0
 ```
 
 ### 2. 打开面板

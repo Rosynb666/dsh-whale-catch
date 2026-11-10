@@ -83,6 +83,7 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 | 📦 **Zip** | selected or all files; `manifest.json` + a human-readable checklist inside; cwd-outside files under `_external/` |
 | 🗂️ **One-click archive** | relative paths preserved; `(2)` suffixes instead of overwrites; failures reported, never silent; a batch manifest and ledger entry are written |
 | 🧾 **Delivery ledger** | **This session / History** views: revisit archived batches, download receipts, restore, compare with the current file |
+| 🪟 **Delivery portal** | Render an archived batch as a self-contained HTML page: offline, printable, with sha256; optional full zip with file contents |
 | 🩺 **Delivery check** | before zip / archive: missing, oversized, empty, sensitive and dirty-since-archive files; blocking issues stop, warnings can be confirmed |
 | 🔁 **Version chain** | pick any recorded turn for a diff; compare the current file with an archived version |
 | 🔎 **Content search** | search file bodies; hit lines jump to the matching Document Preview line |
@@ -91,6 +92,12 @@ This is not reinventing the wheel: both `deliverables/presented` and `workspace/
 | 🌗 **Theme-aware** | only `--dsw-alias-*` / `--dsw-static-*` tokens; dark / light follows DSH |
 | 🌐 **Bilingual** | Chinese and English dictionaries; localised error codes |
 | ⚡ **Zero build** | `lib/client.js` is handed to `__ModuleLoader__` as-is |
+
+### 🎁 What's new in 0.5.0
+
+- 🪟 **Delivery portal**: turn an archived batch into a self-contained `portal.html` — offline, printable, with sha256; manifest-only or full zip.
+- 🧾 **Delivery brief**: file count, size, type mix, turns and unarchived items, ready to paste.
+- 🌐 **Cross-session totals**: batches, files and bytes across sessions at the top of History; local ledger only.
 
 ### 🎁 What's new in 0.4.0
 
@@ -119,14 +126,14 @@ On Desktop use the in-app **Settings → Plugins → Install** and paste one of 
 
 ```text
 github:Rosynb666/dsh-whale-catch     # latest main from GitHub
-dsh-whale-catch@0.4.1                # a pinned npm version
+dsh-whale-catch@0.5.0                # a pinned npm version
 ```
 
 Only self-managed profiles use the CLI:
 
 ```sh
 dsh plugin --profile <profile> add github:Rosynb666/dsh-whale-catch
-dsh plugin --profile <profile> add dsh-whale-catch@0.4.1
+dsh plugin --profile <profile> add dsh-whale-catch@0.5.0
 ```
 
 ### 2. Open the panel
