@@ -119,3 +119,28 @@ test('aggregateLedger 汇总多个会话并排序', async () => {
     await fsp.rm(dir, { recursive: true, force: true })
   }
 })
+
+test('完整版只链接已装入的正文，缺失图片和超限文件说明原因', async (t) => {
+  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), 'whale-partial-'))
+  t.after(() => fsp.rm(dir, { recursive: true, force: true }))
+  await fsp.writeFile(path.join(dir, '报告 #1.txt'), 'ok')
+  await fsp.writeFile(path.join(dir, 'large.bin'), Buffer.alloc(9))
+  const manifest = {
+    ...MANIFEST,
+    files: ['报告 #1.txt', 'missing.png', 'large.bin'].map((rel) => ({ rel, stored: rel })),
+  }
+  const entries = new Map()
+  for await (const entry of buildPortalEntries({ manifest, baseDir: dir, includeFiles: true, maxFileBytes: 8 })) {
+    entries.set(entry.name, entry.data)
+  }
+  const html = entries.get('portal.html').toString('utf8')
+  assert.equal(entries.get('files/报告 #1.txt').toString('utf8'), 'ok')
+  assert.deepEqual([...entries.keys()].filter((name) => name.startsWith('files/')), ['files/报告 #1.txt'])
+  assert.ok(html.includes('href="files/' + encodeURIComponent('报告 #1.txt') + '"'))
+  assert.ok(!html.includes('src="files/missing.png"'))
+  assert.ok(!html.includes('href="files/missing.png"'))
+  assert.ok(!html.includes('href="files/large.bin"'))
+  assert.ok(html.includes('文件缺失') && html.includes('超过单文件上限'))
+  assert.ok(html.includes('实际装入 1 个，未装入 2 个'))
+  assert.deepEqual(JSON.parse(entries.get('_whale-catch/manifest.json').toString('utf8')), manifest)
+})

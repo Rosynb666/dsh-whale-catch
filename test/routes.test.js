@@ -758,3 +758,32 @@ test('file 对未知后缀嗅探文本：文本内联、二进制仍下载', asy
   assert.equal(emptyRes.status, 200)
   assert.match(emptyRes.headers.get('content-type') ?? '', /^text\/plain/)
 })
+
+test('门户响应报告实际装入数量，并为两种模式提供独立文件名', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'whale-portal-http-'))
+  const run = '20261124-120000-000'
+  const manifest = { run, files: ['报告.txt', 'missing.png'].map(rel => ({ rel, stored: rel })) }
+  await fs.writeFile(path.join(dir, '报告.txt'), 'demo')
+  const server = await serve({ buildPortal: async () => ({ manifest, run, baseDir: dir }) })
+  t.after(async () => {
+    await server.close()
+    await fs.rm(dir, { recursive: true, force: true })
+  })
+
+  for (const includeFiles of [false, true]) {
+    const response = await fetch(server.base + 'portal', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ session: 'demo', run, includeFiles }),
+    })
+    const mode = includeFiles ? 'full' : 'manifest'
+    assert.equal(response.status, 200)
+    assert.ok(response.headers.get('content-disposition').includes('portal-' + run + '-' + mode + '.zip'))
+    assert.equal(response.headers.get('x-whale-catch-files'), '2')
+    assert.equal(response.headers.get('x-whale-catch-packed'), includeFiles ? '1' : null)
+    const entries = readZip(Buffer.from(await response.arrayBuffer()))
+    const files = entries.filter(entry => entry.name.startsWith('files/'))
+    assert.deepEqual(files.map(entry => entry.name), includeFiles ? ['files/报告.txt'] : [])
+    if (includeFiles) assert.equal(files[0].data.toString(), 'demo')
+  }
+})
