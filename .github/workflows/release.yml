@@ -110,12 +110,12 @@ jobs:
         shell: bash
         run: |
           VERSION="$(node -p "require('./package.json').version")"
-          for i in $(seq 1 6); do
+          for i in $(seq 1 18); do
             if npm view "dsh-whale-catch@$VERSION" version >/dev/null 2>&1; then
               echo "::notice::npm 上已确认 dsh-whale-catch@$VERSION"
               exit 0
             fi
-            echo "等待 npm 传播（$i/6）…"
+            echo "等待 npm 传播（$i/18）…"
             sleep 10
           done
           echo "::error::npm 发布后校验失败：dsh-whale-catch@$VERSION 不在 registry 上"
